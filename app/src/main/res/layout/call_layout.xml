@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="@dimen/_14sdp"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <ImageView
+        android:id="@+id/call_image"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/profile"
+        android:layout_marginTop="@dimen/_5sdp"
+        android:layout_marginStart="@dimen/_3sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/call_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Ali"
+        android:layout_marginStart="@dimen/_8sdp"
+        android:layout_marginTop="@dimen/_5sdp"
+        android:textColor="@android:color/black"
+        android:textStyle="bold"
+        android:textSize="@dimen/_16sdp"
+        app:layout_constraintStart_toEndOf="@+id/call_image"
+        app:layout_constraintTop_toTopOf="@+id/call_image"
+        tools:ignore="MissingConstraints" />
+
+    <ImageView
+        android:id="@+id/calldescriptionicon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:scaleType="centerCrop"
+        android:layout_marginTop="@dimen/_3sdp"
+        android:src="@drawable/calldescription"
+        app:layout_constraintStart_toEndOf="@+id/call_image"
+        app:layout_constraintStart_toStartOf="@+id/call_name"
+        app:layout_constraintEnd_toStartOf="@+id/call_description"
+        app:layout_constraintTop_toBottomOf="@+id/call_name"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/call_description"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Today, 09:30 AM"
+        android:layout_marginTop="@dimen/_3sdp"
+        android:layout_marginStart="@dimen/_3sdp"
+        android:textColor="@color/text"
+        android:textSize="@dimen/_9sdp"
+        app:layout_constraintStart_toEndOf="@+id/calldescriptionicon"
+        app:layout_constraintTop_toBottomOf="@+id/call_name"
+        tools:ignore="MissingConstraints" />
+
+    <ImageView
+        android:id="@+id/voicecall"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/calliconcall"
+        android:layout_marginTop="@dimen/_10sdp"
+        android:layout_marginEnd="@dimen/_10sdp"
+        app:layout_constraintEnd_toStartOf="@+id/videcall"
+        app:layout_constraintTop_toTopOf="@+id/call_name"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:ignore="MissingConstraints" />
+
+    <ImageView
+        android:id="@+id/videcall"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/video"
+        android:layout_marginTop="@dimen/_10sdp"
+        android:layout_marginEnd="@dimen/_10sdp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/call_name"
+        tools:ignore="MissingConstraints" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

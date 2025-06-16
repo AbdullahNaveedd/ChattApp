@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="@dimen/_14sdp">
+
+
+    <TextView
+        android:id="@+id/sendermessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_5sdp"
+        android:layout_marginEnd="@dimen/_8sdp"
+        android:background="@drawable/senderbox"
+        android:maxWidth="@dimen/_230sdp"
+        android:paddingStart="@dimen/_8sdp"
+        android:paddingTop="@dimen/_8sdp"
+        android:paddingEnd="@dimen/_8sdp"
+        android:paddingBottom="@dimen/_8sdp"
+        android:text="Hello how are you i am ali"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_10sdp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="MissingConstraints" />
+
+
+    <ImageView
+        android:id="@+id/senderimage"
+        android:layout_width="@dimen/_180sdp"
+        android:layout_height="@dimen/_180sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        android:layout_marginEnd="@dimen/_2sdp"
+        android:padding="@dimen/_1sdp"
+        android:scaleType="centerInside"
+        android:src="@drawable/chatapp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/voicemessage"
+        android:layout_width="@dimen/_170sdp"
+        android:layout_height="@dimen/_34sdp"
+        android:layout_marginTop="@dimen/_5sdp"
+        android:layout_marginEnd="@dimen/_8sdp"
+        android:background="@drawable/senderbox"
+        android:maxWidth="@dimen/_230sdp"
+        android:paddingStart="@dimen/_8sdp"
+        android:paddingTop="@dimen/_8sdp"
+        android:paddingEnd="@dimen/_8sdp"
+        android:paddingBottom="@dimen/_8sdp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/senderimage"
+        tools:ignore="MissingConstraints" />
+
+    <ImageView
+        android:id="@+id/btnPlayPause"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_marginStart="@dimen/_8sdp"
+        android:src="@drawable/pause"
+        app:layout_constraintBottom_toBottomOf="@+id/voicemessage"
+        app:layout_constraintStart_toStartOf="@+id/voicemessage"
+        app:layout_constraintTop_toTopOf="@+id/voicemessage" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="120dp"
+        android:layout_height="@dimen/_3sdp"
+        android:layout_marginStart="8dp"
+        android:max="100"
+        android:progress="71"
+        android:progressTint="@color/black"
+        app:layout_constraintBottom_toBottomOf="@+id/voicemessage"
+        app:layout_constraintStart_toEndOf="@+id/btnPlayPause"
+        app:layout_constraintTop_toTopOf="@+id/voicemessage" />
+
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/messageBarrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="sendermessage,senderimage,voicemessage"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/sendertime"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_4sdp"
+        android:layout_marginEnd="@dimen/_15sdp"
+        android:text="9:25 AM"
+        android:textColor="@color/text"
+        android:textSize="@dimen/_7sdp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/messageBarrier"
+        tools:ignore="MissingConstraints" />
+
+
+    <ImageView
+        android:id="@+id/recieverimage"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="@dimen/_5sdp"
+        android:layout_marginTop="@dimen/_1sdp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/profile"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/sendertime"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/revievermessagename"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/_8sdp"
+        android:text="Ali"
+        android:textColor="@android:color/black"
+        android:textSize="@dimen/_14sdp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toEndOf="@+id/recieverimage"
+        app:layout_constraintTop_toTopOf="@+id/recieverimage"
+        tools:ignore="MissingConstraints" />
+
+    <View
+        android:id="@+id/viewbox"
+        android:layout_width="220dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="@id/rvoicemessage"
+        app:layout_constraintEnd_toEndOf="@id/rvoicemessage"
+        app:layout_constraintStart_toStartOf="@id/recievermessage"
+        app:layout_constraintTop_toTopOf="@id/recievermessage" />
+
+    <TextView
+        android:id="@+id/recievermessage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/_8sdp"
+        android:layout_marginTop="@dimen/_2sdp"
+        android:background="@drawable/meesagebox"
+        android:maxWidth="@dimen/_230sdp"
+        android:paddingStart="@dimen/_8sdp"
+        android:paddingTop="@dimen/_8sdp"
+        android:paddingEnd="@dimen/_8sdp"
+        android:paddingBottom="@dimen/_8sdp"
+        android:text="Hello how are you i am ali"
+        android:textColor="@color/black"
+        android:textSize="@dimen/_10sdp"
+        app:layout_constraintStart_toEndOf="@+id/recieverimage"
+        app:layout_constraintTop_toBottomOf="@+id/revievermessagename"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_4sdp"
+        android:text="9:25 AM"
+        android:textColor="@color/text"
+        android:textSize="@dimen/_7sdp"
+        app:layout_constraintEnd_toEndOf="@id/viewbox"
+        app:layout_constraintTop_toBottomOf="@+id/Barrier"
+        tools:ignore="MissingConstraints" />
+
+    <ImageView
+        android:id="@+id/rsenderimage"
+        android:layout_width="@dimen/_180sdp"
+        android:layout_height="@dimen/_180sdp"
+        android:padding="@dimen/_1sdp"
+        android:layout_marginTop="@dimen/_13sdp"
+        android:scaleType="centerInside"
+        android:src="@drawable/chatapp"
+        app:layout_constraintStart_toStartOf="@+id/recieverimage"
+        app:layout_constraintTop_toBottomOf="@+id/revievermessagename" />
+
+    <TextView
+        android:id="@+id/rvoicemessage"
+        android:layout_width="@dimen/_170sdp"
+        android:layout_height="@dimen/_34sdp"
+        android:layout_marginTop="@dimen/_5sdp"
+        android:layout_marginEnd="@dimen/_8sdp"
+        android:background="@drawable/senderbox"
+        android:maxWidth="@dimen/_230sdp"
+        android:paddingStart="@dimen/_8sdp"
+        android:paddingTop="@dimen/_8sdp"
+        android:paddingEnd="@dimen/_8sdp"
+        android:paddingBottom="@dimen/_8sdp"
+        app:layout_constraintStart_toStartOf="@id/revievermessagename"
+        app:layout_constraintTop_toBottomOf="@id/rsenderimage"
+        tools:ignore="MissingConstraints" />
+
+    <ImageView
+        android:id="@+id/rbtnPlayPause"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_marginStart="@dimen/_8sdp"
+        android:src="@drawable/pause"
+        app:layout_constraintBottom_toBottomOf="@+id/rvoicemessage"
+        app:layout_constraintStart_toStartOf="@+id/rvoicemessage"
+        app:layout_constraintTop_toTopOf="@+id/rvoicemessage" />
+
+    <ProgressBar
+        android:id="@+id/reciverprogressBar"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="120dp"
+        android:layout_height="@dimen/_3sdp"
+        android:layout_marginStart="8dp"
+        android:max="100"
+        android:progress="71"
+        android:progressTint="@color/black"
+        app:layout_constraintBottom_toBottomOf="@+id/rvoicemessage"
+        app:layout_constraintStart_toEndOf="@+id/rbtnPlayPause"
+        app:layout_constraintTop_toTopOf="@+id/rvoicemessage" />
+
+    <androidx.constraintlayout.widget.Barrier
+        android:id="@+id/Barrier"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:barrierDirection="bottom"
+        app:constraint_referenced_ids="viewbox,recievermessage,rsenderimage,rvoicemessage"
+        tools:ignore="MissingConstraints" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".login.Login">
+
+    <Button
+        android:id="@+id/backbtns"
+        android:layout_width="@dimen/_25sdp"
+        android:layout_height="@dimen/_25sdp"
+        android:background="@drawable/back"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="@dimen/_20sdp"
+        android:layout_marginStart="@dimen/_10sdp"
+        />
+
+    <TextView
+        android:id="@+id/logintochat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_80sdp"
+        android:layout_marginRight="@dimen/_80sdp"
+        android:text="Sign up"
+        android:textColor="@color/black"
+        android:textStyle="bold"
+        android:textSize="@dimen/_18sdp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:ignore="MissingConstraints"
+        />
+
+    <TextView
+        android:id="@+id/logintochatbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_80sdp"
+        android:layout_marginStart="@dimen/_3sdp"
+        android:text="with"
+        android:textColor="@color/black"
+        android:textStyle="bold"
+        android:textSize="@dimen/_18sdp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/logintochat"
+        tools:ignore="MissingConstraints"
+        />
+
+    <TextView
+        android:id="@+id/logintochatboxemail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/_80sdp"
+        android:layout_marginStart="@dimen/_3sdp"
+        android:text="Email"
+        android:textColor="@color/black"
+        android:textStyle="bold"
+        android:textSize="@dimen/_18sdp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/logintochatbox"
+        tools:ignore="MissingConstraints"
+        />
+    <View
+        android:id="@+id/loginline"
+        android:layout_width="@dimen/_45sdp"
+        android:layout_height="@dimen/_4sdp"
+        android:background="@color/Loginline"
+        android:layout_marginBottom="@dimen/_3sdp"
+        app:layout_constraintStart_toStartOf="@id/logintochatboxemail"
+        app:layout_constraintBottom_toBottomOf="@+id/logintochatboxemail"
+        />
+
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="@dimen/_240sdp"
+        android:layout_height="@dimen/_20sdp"
+        android:layout_marginTop="@dimen/_16sdp"
+        android:text="Get chatting with friends and family today by"
+        android:textColor="@color/text"
+        android:textSize="@dimen/_13sdp"
+        app:layout_constraintTop_toBottomOf="@+id/logintochat"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:ignore="MissingConstraints"
+        />
+    <TextView
+        android:id="@+id/texttwo"
+        android:layout_width="@dimen/_180sdp"
+        android:layout_height="@dimen/_20sdp"
+        android:text="signing up for our chat app!"
+        android:textColor="@color/text"
+        android:textSize="@dimen/_13sdp"
+        app:layout_constraintTop_toBottomOf="@+id/text"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:ignore="MissingConstraints"
+        />
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Your Name"
+        android:layout_marginTop="@dimen/_30sdp"
+        android:layout_marginStart="@dimen/_34sdp"
+        android:textColor="@color/Emailtext"
+        android:textStyle="bold"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/texttwo"
+        tools:ignore="MissingConstraints"
+        />
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/entervalidname"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:helperText="Enter Valid Name"
+        app:helperTextTextColor="@android:color/holo_red_light"
+        app:layout_constraintTop_toBottomOf="@+id/nametext"
+        app:layout_constraintEnd_toEndOf="@+id/nametext"
+        tools:ignore="MissingConstraints" />
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/nametext"
+        android:layout_width="@dimen/_250sdp"
+        android:inputType="text"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/name"
+        app:layout_constraintStart_toStartOf="@+id/name"
+        />
+
+    <TextView
+        android:id="@+id/email"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Your Email"
+        android:layout_marginStart="@dimen/_34sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        android:textColor="@color/Emailtext"
+
+        android:textStyle="bold"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/nametext"
+        tools:ignore="MissingConstraints"
+        />
+
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/entervalidemail"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:helperText="Enter Valid Email"
+        app:helperTextTextColor="@android:color/holo_red_light"
+        app:layout_constraintTop_toBottomOf="@+id/emailtexts"
+        app:layout_constraintEnd_toEndOf="@+id/emailtexts"
+        tools:ignore="MissingConstraints" />
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/emailtexts"
+        android:layout_width="@dimen/_250sdp"
+        android:inputType="textEmailAddress"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/email"
+        app:layout_constraintStart_toStartOf="@+id/email"
+        />
+    <ProgressBar
+        android:id="@+id/progressbars"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/emailtexts"
+        tools:ignore="MissingConstraints" />
+
+
+    <TextView
+        android:id="@+id/password"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Password"
+        android:layout_marginStart="@dimen/_34sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        android:textColor="@color/Emailtext"
+        android:textStyle="bold"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/emailtexts"
+        tools:ignore="MissingConstraints"
+        />
+
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/entervalidpassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:helperText="Enter Valid Password Atleast 6 Digits Long"
+        app:helperTextTextColor="@android:color/holo_red_light"
+        app:layout_constraintEnd_toEndOf="@+id/passwordtexts"
+        app:layout_constraintTop_toBottomOf="@+id/passwordtexts"
+        tools:ignore="MissingConstraints" />
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/passwordtexts"
+        android:layout_width="@dimen/_250sdp"
+        android:layout_height="wrap_content"
+        android:inputType="textPassword"
+        android:lines="1"
+        android:textColorHint="@android:color/darker_gray"
+        app:layout_constraintStart_toStartOf="@+id/password"
+        app:layout_constraintTop_toBottomOf="@+id/password" />
+
+    <TextView
+        android:id="@+id/confirmpassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Confirm Password"
+        android:layout_marginStart="@dimen/_34sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        android:textColor="@color/Emailtext"
+        android:textStyle="bold"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/passwordtexts"
+        tools:ignore="MissingConstraints"
+        />
+
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/entervalidconfirmpassword"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:helperText="Password Match With Confirm Password"
+        app:helperTextTextColor="@android:color/holo_red_light"
+        app:layout_constraintEnd_toEndOf="@+id/confirmpasswordtext"
+        app:layout_constraintTop_toBottomOf="@+id/confirmpasswordtext"
+        tools:ignore="MissingC onstraints" />
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/confirmpasswordtext"
+        android:layout_width="@dimen/_250sdp"
+        android:inputType="textPassword"
+        android:layout_height="wrap_content"
+        android:lines="1"
+        app:layout_constraintTop_toBottomOf="@+id/confirmpassword"
+        app:layout_constraintStart_toStartOf="@+id/confirmpassword"
+        />
+
+    <Button
+        android:id="@+id/login"
+        android:layout_width="@dimen/_232sdp"
+        android:layout_height="@dimen/_35sdp"
+        android:text="Create an account"
+        android:textColor="@color/text"
+        android:layout_marginBottom="@dimen/_16sdp"
+        android:background="@drawable/btn_not_active"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        tools:ignore="MissingConstraints" />
+
+
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

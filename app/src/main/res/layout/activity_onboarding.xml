@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/onboarding"
+    tools:context=".Activity.Onboarding"
+    >
+
+    <ImageView
+        android:id="@+id/logo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/subtract"
+        android:layout_marginRight="@dimen/_6sdp"
+        app:layout_constraintEnd_toStartOf="@+id/chatbox"
+        app:layout_constraintTop_toTopOf="@+id/chatbox"
+        app:layout_constraintBottom_toBottomOf="@+id/chatbox"
+        />
+
+
+    <TextView
+        android:id="@+id/chatbox"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Chatbox"
+        android:textColor="@color/white"
+        android:textStyle="bold"
+        android:layout_marginTop="@dimen/_20sdp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        />
+
+
+    <ImageView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ellipse"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="MissingConstraints" />
+
+    <TextView
+        android:id="@+id/textconnect"
+        android:layout_width="@dimen/_237sdp"
+        android:layout_height="@dimen/_134sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        android:layout_marginStart="@dimen/_24sdp"
+        android:text="Connect friends"
+        android:textColor="@color/white"
+        android:textSize="@dimen/_59sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/chatbox"
+        />
+
+    <TextView
+        android:id="@+id/texteasily"
+        android:layout_width="@dimen/_237sdp"
+        android:layout_height="@dimen/_146sdp"
+        android:layout_marginStart="@dimen/_24sdp"
+        android:layout_marginBottom="@dimen/_10sdp"
+        android:text="easily &amp; quickly"
+        android:textColor="@color/white"
+        android:textStyle="bold"
+        android:textSize="@dimen/_59sdp"
+        app:layout_constraintBottom_toTopOf="@id/textourchat"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textconnect"
+        />
+
+    <TextView
+        android:id="@+id/textourchat"
+        android:layout_width="@dimen/_237sdp"
+        android:layout_height="@dimen/_33sdp"
+        android:layout_marginStart="@dimen/_24sdp"
+        android:layout_marginTop="@dimen/_10sdp"
+        android:text="Our chat app is the perfect way to stay connected with friends and family."
+        android:textColor="@color/textourchat"
+        android:textSize="@dimen/_13sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/texteasily"
+        />
+
+    <ImageView
+        android:id="@+id/images"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/fb"
+        android:layout_marginStart="@dimen/_76sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textourchat"
+        />
+
+    <ImageView
+        android:id="@+id/google"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/google"
+        android:layout_marginStart="@dimen/_20sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        app:layout_constraintStart_toEndOf="@+id/images"
+        app:layout_constraintTop_toBottomOf="@+id/textourchat"
+        />
+
+    <ImageView
+        android:id="@+id/apple"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/apple"
+        android:layout_marginStart="@dimen/_20sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        app:layout_constraintStart_toEndOf="@id/google"
+        app:layout_constraintTop_toBottomOf="@+id/textourchat"
+        />
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="@dimen/_1sdp"
+        android:layout_marginTop="@dimen/_26sdp"
+        android:background="@color/textourchat"
+        android:layout_marginStart="@dimen/_20sdp"
+        android:layout_marginEnd="@dimen/_10sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/or"
+        app:layout_constraintTop_toBottomOf="@+id/images"
+        app:layout_constraintLeft_toLeftOf="@+id/or"
+        tools:ignore="MissingConstraints"
+        />
+
+    <TextView
+        android:id="@+id/or"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="26dp"
+        android:text="OR"
+        android:textColor="@color/textourchat"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/images" />
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="@dimen/_1sdp"
+        android:layout_marginEnd="@dimen/_20sdp"
+        android:layout_marginStart="@dimen/_10sdp"
+        android:layout_marginTop="@dimen/_26sdp"
+        android:background="@color/textourchat"
+        app:layout_constraintTop_toBottomOf="@+id/images"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/or"
+        app:layout_constraintRight_toRightOf="@+id/or"
+        tools:ignore="MissingConstraints"
+        />
+
+
+    <Button
+        android:id="@+id/btnsigniup"
+        android:layout_width="0dp"
+        android:layout_height="@dimen/_45sdp"
+        android:layout_marginTop="@dimen/_30sdp"
+        android:layout_marginEnd="@dimen/_20sdp"
+        android:layout_marginStart="@dimen/_20sdp"
+        android:text="Sign up withn mail"
+        android:textColor="@color/black"
+        android:textSize="@dimen/_10sdp"
+        android:textStyle="bold"
+        android:background="@drawable/btndesign"
+        android:backgroundTint="@color/white"
+        app:layout_constraintTop_toBottomOf="@+id/or"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        />
+    <TextView
+        android:id="@+id/existingaccount"
+        android:layout_width="@dimen/_99sdp"
+        android:layout_height="@dimen/_27sdp"
+        android:layout_marginTop="@dimen/_25sdp"
+        android:layout_marginRight="@dimen/_40sdp"
+        android:text="Existing account?"
+        android:textColor="@color/textourchat"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/btnsigniup"
+        />
+
+    <TextView
+        android:id="@+id/Login"
+        android:layout_width="@dimen/_60sdp"
+        android:layout_height="@dimen/_27sdp"
+        android:layout_marginTop="@dimen/_36sdp"
+        android:text="Log in"
+        android:textColor="@color/white"
+        android:textStyle="bold"
+        android:textSize="@dimen/_12sdp"
+        app:layout_constraintStart_toEndOf="@+id/existingaccount"
+        app:layout_constraintBottom_toBottomOf="@+id/existingaccount"
+        />
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

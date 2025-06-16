@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/message">
+
+    <fragment
+        android:id="@+id/call"
+        android:name="com.example.chatapp.Fragements.CallFragement"
+        android:label="fragment_call_fragement"
+        tools:layout="@layout/fragment_call_fragement" >
+        <action
+            android:id="@+id/action_call_to_setting"
+            app:destination="@id/setting" />
+        <action
+            android:id="@+id/action_call_to_message"
+            app:destination="@id/message" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/setting"
+        android:name="com.example.chatapp.Fragements.Setting"
+        android:label="fragment_setting"
+        tools:layout="@layout/fragment_setting" >
+        <action
+            android:id="@+id/action_setting_to_message"
+            app:destination="@id/message" />
+    </fragment>
+    <fragment
+        android:id="@+id/message"
+        android:name="com.example.chatapp.Fragements.Message"
+        android:label="fragment_message"
+        tools:layout="@layout/fragment_message" >
+        <action
+            android:id="@+id/action_message_to_contact"
+            app:destination="@id/contact" />
+        <action
+            android:id="@+id/action_message_to_call"
+            app:destination="@id/call" />
+        <action
+            android:id="@+id/action_message_to_userChat"
+            app:destination="@id/userChat" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/contact"
+        android:name="com.example.chatapp.Fragements.ContactFragement"
+        android:label="fragment_contact_fragement"
+        tools:layout="@layout/fragment_contact_fragement" >
+        <action
+            android:id="@+id/action_contact_to_call"
+            app:destination="@id/call" />
+        <action
+            android:id="@+id/action_contact_to_setting"
+            app:destination="@id/setting" />
+        <action
+            android:id="@+id/action_contact_to_message"
+            app:destination="@id/message" />
+    </fragment>
+    <fragment
+        android:id="@+id/userChat"
+        android:name="com.example.chatapp.Fragements.UserChat"
+        android:label="fragment_user_chat"
+        tools:layout="@layout/fragment_user_chat" >
+        <action
+            android:id="@+id/action_userChat_to_message"
+            app:destination="@id/message" />
+    </fragment>
+    <fragment
+        android:id="@+id/home2"
+        android:name="com.example.chatapp.Fragements.Home"
+        android:label="Home" >
+        <action
+            android:id="@+id/action_home2_to_message"
+            app:destination="@id/message" />
+    </fragment>
+
+</navigation>

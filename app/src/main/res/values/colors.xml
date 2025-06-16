@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="onboarding">#1A1A1A</color>
+    <color name="textourchat">#B9C1BE</color>
+    <color name="text">#797C7B</color>
+    <color name="line">#CDD1D0</color>
+    <color name="Loginline">#58C3B6</color>
+    <color name="Emailtext">#24786D</color>
+    <color name="sendbox">#20A09D</color>
+    <color name="box">#FFFFFF</color>
+    <color name="Loginbtn">#F3F6F6</color>
+    <color name="messagebox">#F2F7FB</color>
+    <color name="LoginButton">#24786D</color>
+    <color name="linecolor">#E6E6E6</color>
+</resources>
