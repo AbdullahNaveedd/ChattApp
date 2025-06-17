@@ -114,8 +114,6 @@ class UserChat : Fragment() {
         val receiverImage = arguments?.getString("receiverImage") ?: ""
         Glide.with(requireContext())
             .load(receiverImage)
-            .circleCrop()
-            .placeholder(R.drawable.profile)
             .into(callimage)
 
         currentReceiverId = arguments?.getString("receiverId")
