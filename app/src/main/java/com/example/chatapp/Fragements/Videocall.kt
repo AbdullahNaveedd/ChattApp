@@ -10,7 +10,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -134,7 +133,6 @@ class Videocall : Fragment() {
                 }
             )
         } else {
-            // Create new video call
             updateCallStatus("Connecting...")
             Log.d("Videocall", "Starting video call - Sender: $senderId, Receiver: $receiverId")
 
@@ -266,7 +264,6 @@ class Videocall : Fragment() {
             }
         }
 
-        // Uncomment and fix camera toggle
         videov.setOnClickListener {
             if (::liveKitManager.isInitialized && liveKitManager.isConnected()) {
                 try {
@@ -354,7 +351,6 @@ class Videocall : Fragment() {
                 }
             }
 
-            // Clean up EglBase
             eglBase?.release()
             eglBase = null
 
@@ -369,13 +365,11 @@ class Videocall : Fragment() {
     override fun onPause() {
         super.onPause()
         Log.d("Videocall", "Fragment paused")
-        // Don't disable video on pause as it might cause issues
     }
 
     override fun onResume() {
         super.onResume()
         Log.d("Videocall", "Fragment resumed")
-        // Ensure video is enabled when resuming
         if (::liveKitManager.isInitialized && liveKitManager.isConnected() && isCameraEnabled) {
             liveKitManager.enableVideo(true)
         }
