@@ -131,8 +131,13 @@ class UserChat : Fragment() {
         val cam = view?.findViewById<ImageView>(R.id.cam)
 
         videobtn.setOnClickListener {
-            navigateToFragment(Videocall())
-        }
+            val fragment = Videocall().apply {
+                arguments = Bundle().apply {
+                    putString("senderId", currentUserId)
+                    putString("receiverId", currentReceiverId)
+                }
+            }
+            navigateToFragment(fragment)        }
 
         voicebtn.setOnClickListener {
             val fragment = VoiceCall().apply {

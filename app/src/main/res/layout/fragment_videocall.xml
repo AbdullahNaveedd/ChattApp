@@ -7,20 +7,28 @@
     android:background="@color/black"
     tools:context=".Fragements.UserChat">
 
-    <io.livekit.android.renderer.SurfaceViewRenderer
-        android:id="@+id/remoteRenderer"
+    <FrameLayout
+        android:id="@+id/video_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent">
 
-    <io.livekit.android.renderer.SurfaceViewRenderer
-        android:id="@+id/localRenderer"
-        android:layout_width="120dp"
-        android:layout_height="160dp"
-        android:layout_margin="16dp"
-        android:elevation="10dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        android:visibility="visible" />
+        <io.livekit.android.renderer.SurfaceViewRenderer
+            android:id="@+id/remoteRenderer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="visible" />
+
+        <io.livekit.android.renderer.SurfaceViewRenderer
+            android:id="@+id/localRenderer"
+            android:layout_width="120dp"
+            android:layout_height="160dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="16dp"
+            android:elevation="10dp"
+            android:visibility="visible" />
+
+    </FrameLayout>
+
 
 
     <ImageView

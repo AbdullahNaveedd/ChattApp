@@ -122,11 +122,9 @@ class VoiceCall : Fragment() {
             val remoteRenderer = view.findViewById<SurfaceViewRenderer>(R.id.remoteRenderer)
 
             val eglBase = EglBase.create()
-            localRenderer.init(eglBase.eglBaseContext, null)
             localRenderer.setMirror(true)
             localRenderer.visibility = View.GONE
 
-            remoteRenderer.init(eglBase.eglBaseContext, null)
             remoteRenderer.setMirror(false)
             remoteRenderer.visibility = View.GONE
 

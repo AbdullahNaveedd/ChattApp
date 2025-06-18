@@ -50,6 +50,8 @@ class LiveKitManager(
                     token = token,
                     options = ConnectOptions(autoSubscribe = true)
                 )
+                localRenderer?.let { room.initVideoRenderer(it) }
+                remoteRenderer?.let { room.initVideoRenderer(it) }
 
                 createAndPublishAudioTrack()
 
@@ -61,6 +63,8 @@ class LiveKitManager(
                 Log.e("LiveKit", "Connection failed", e)
                 onError(e.localizedMessage ?: "Connection failed")
             }
+
+
         }
     }
 
@@ -80,8 +84,11 @@ class LiveKitManager(
     }
 
     private fun observeRoomEvents(
+
         onParticipantJoined: (String) -> Unit,
         onParticipantLeft: (String) -> Unit
+
+
     ) {
         scope.launch {
             room.events.collect { event ->
@@ -136,15 +143,16 @@ class LiveKitManager(
         this.localRenderer = localRenderer
         this.remoteRenderer = remoteRenderer
 
-        room.localParticipant.trackPublications.forEach { publicationEntry ->
-            val publication = publicationEntry.value
-            val track = publication.track
+        if (::room.isInitialized) {
+            room.initVideoRenderer(localRenderer)
+            room.initVideoRenderer(remoteRenderer)
+        }
 
-            if (track is LocalVideoTrack) {
-                track.addRenderer(localRenderer)
-            }
+        videoTrack?.let { track ->
+            localRenderer.let { track.addRenderer(it) }
         }
     }
+
 
     fun enableAudio(enable: Boolean) {
         scope.launch {
@@ -159,16 +167,18 @@ class LiveKitManager(
             }
         }
     }
+
     private fun createAndPublishVideoTrack() {
         scope.launch {
             try {
-                if (::room.isInitialized) {
+                if (::room.isInitialized && videoTrack == null) {
                     videoTrack = room.localParticipant.createVideoTrack()
                     room.localParticipant.publishVideoTrack(videoTrack!!)
                     Log.d("LiveKit", "Video track created and published successfully")
 
                     localRenderer?.let {
                         videoTrack?.addRenderer(it)
+                        Log.d("LiveKit", "Local video renderer attached")
                     }
                 }
             } catch (e: Exception) {
@@ -180,7 +190,7 @@ class LiveKitManager(
     fun enableVideo(enable: Boolean) {
         scope.launch {
             try {
-                if (::room.isInitialized) {
+                if (::room.isInitialized) { // check whether the room is initialized
                     if (enable && videoTrack == null) {
                         createAndPublishVideoTrack()
                     } else {
@@ -188,6 +198,10 @@ class LiveKitManager(
                         isVideoEnabled = enable
                         Log.d("LiveKit", "Video ${if (enable) "enabled" else "disabled"}")
                     }
+
+//                    else{
+//                        Log.d("LiveKit","Something went wrong while trying to enableVideo")
+//                    }
                 }
             } catch (e: Exception) {
                 Log.e("LiveKit", "Failed to toggle video", e)
@@ -195,13 +209,17 @@ class LiveKitManager(
         }
     }
 
+    fun toggleVideo(): Boolean {
+        val newState = !isVideoEnabled
+        enableVideo(newState)
+        return newState
+    }
 
     fun toggleMicrophone(): Boolean {
         isAudioEnabled = !isAudioEnabled
         enableAudio(isAudioEnabled)
         return !isAudioEnabled
     }
-
 
     fun toggleSpeaker(): Boolean {
         isSpeakerEnabled = !isSpeakerEnabled
