@@ -1,12 +1,19 @@
 package com.example.chatapp.Fragements
 
+import android.Manifest
 import android.app.Activity.RESULT_OK
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.media.MediaRecorder
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
@@ -30,6 +37,9 @@ import com.example.chatapp.Auth.Message.MessageType
 import com.example.chatapp.Auth.Message.UserChatAdapter
 import com.example.chatapp.Auth.Message.UserChatDataClass
 import com.example.chatapp.R
+import com.cloudinary.android.MediaManager
+import com.cloudinary.android.callback.UploadCallback
+import com.cloudinary.android.callback.ErrorInfo
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -38,11 +48,24 @@ import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
+import okhttp3.FormBody
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class UserChat : Fragment() {
 
@@ -137,7 +160,8 @@ class UserChat : Fragment() {
                     putString("receiverId", currentReceiverId)
                 }
             }
-            navigateToFragment(fragment)        }
+            navigateToFragment(fragment)
+        }
 
         voicebtn.setOnClickListener {
             val fragment = VoiceCall().apply {
@@ -170,12 +194,14 @@ class UserChat : Fragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 updateButtonVisibility(s.isNullOrBlank())
             }
+
             override fun afterTextChanged(s: Editable?) {}
         })
     }
 
     private fun navigateToFragment(fragment: Fragment) {
-        val fragmentTransaction = (requireActivity() as AppCompatActivity).supportFragmentManager.beginTransaction()
+        val fragmentTransaction =
+            (requireActivity() as AppCompatActivity).supportFragmentManager.beginTransaction()
         fragmentTransaction.replace(R.id.fragment_container_view, fragment)
         fragmentTransaction.commit()
     }
@@ -203,7 +229,8 @@ class UserChat : Fragment() {
                 val userId = currentUserId
 
                 if (userId == null) {
-                    Toast.makeText(requireContext(), "User not authenticated", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "User not authenticated", Toast.LENGTH_SHORT)
+                        .show()
                     return@launch
                 }
 
@@ -215,11 +242,17 @@ class UserChat : Fragment() {
                 currentChatId = findOrCreateChat(userId, receiverId)
                 loadChatMessages()
 
-                Log.d("UserChat", "Chat initialized with ID: $currentChatId between $userId and $receiverId")
-                }
-                catch (e: Exception) {
+                Log.d(
+                    "UserChat",
+                    "Chat initialized with ID: $currentChatId between $userId and $receiverId"
+                )
+            } catch (e: Exception) {
                 Log.e("UserChat", "Error initializing chat", e)
-                Toast.makeText(requireContext(), "Error loading chat: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    "Error loading chat: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -262,8 +295,12 @@ class UserChat : Fragment() {
         }
 
         if (currentChatId == null || currentUserId.isNullOrEmpty() || currentReceiverId.isNullOrEmpty()) {
-            Log.w("UserChat", "Cannot send message - missing required data: chatId=$currentChatId, userId=$currentUserId, receiverId=$currentReceiverId")
-            Toast.makeText(requireContext(), "Chat not initialized properly", Toast.LENGTH_SHORT).show()
+            Log.w(
+                "UserChat",
+                "Cannot send message - missing required data: chatId=$currentChatId, userId=$currentUserId, receiverId=$currentReceiverId"
+            )
+            Toast.makeText(requireContext(), "Chat not initialized properly", Toast.LENGTH_SHORT)
+                .show()
             return
         }
 
@@ -277,11 +314,113 @@ class UserChat : Fragment() {
             } catch (e: Exception) {
                 Log.e("UserChat", "Error sending message", e)
                 CoroutineScope(Dispatchers.Main).launch {
-                    Toast.makeText(requireContext(), "Failed to send message: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        requireContext(),
+                        "Failed to send message: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
     }
+
+    fun uriToFile(uri: Uri, context: Context): File? {
+        return try {
+            val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val source = ImageDecoder.createSource(context.contentResolver, uri)
+                ImageDecoder.decodeBitmap(source)
+            } else {
+                BitmapFactory.decodeStream(context.contentResolver.openInputStream(uri)!!)
+            } ?: return null
+
+            val file = File(context.cacheDir, "IMG_${System.currentTimeMillis()}.jpg")
+            FileOutputStream(file).use { fos ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos)
+            }
+
+            file.takeIf { it.length() > 0 }
+        } catch (e: Exception) {
+            Log.e("FileConversion", "Error: ${e.message}", e)
+            null
+        }
+    }
+
+
+    suspend fun uploadFileToCloudinarySuspended(context: Context, file: File): String? =
+        suspendCancellableCoroutine { continuation ->
+
+            val config = mapOf(
+                "cloud_name" to "dlfn2oyqx",
+                "api_key" to "394479351886316",
+                "upload_preset" to "chatapp_preset"
+            )
+
+            try {
+                MediaManager.get()
+            } catch (e: Exception) {
+                MediaManager.init(context.applicationContext, config)
+            }
+
+            MediaManager.get().upload(file.absolutePath)
+                .unsigned("chatapp_preset")
+                .option("folder", "ChatApp")
+                .callback(object : UploadCallback {
+                    override fun onStart(requestId: String) {}
+
+                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {}
+
+                    override fun onSuccess(requestId: String, resultData: Map<*, *>) {
+                        val url = resultData["secure_url"] as? String
+                        continuation.resume(url, null)
+                    }
+
+                    override fun onError(requestId: String?, error: ErrorInfo?) {
+                        continuation.resume(null, null)
+                    }
+
+                    override fun onReschedule(requestId: String?, error: ErrorInfo?) {}
+                })
+                .dispatch()
+        }
+
+
+    private fun handleSelectedImage(uri: Uri, receiverId: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val file = uriToFile(uri, requireContext())
+
+            if (file == null || file.length() == 0L) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(requireContext(), "Failed to process image", Toast.LENGTH_SHORT)
+                        .show()
+                }
+                return@launch
+            }
+
+            withContext(Dispatchers.Main) {
+                Toast.makeText(requireContext(), "Uploading image...", Toast.LENGTH_SHORT).show()
+            }
+
+            val uploadedUrl = uploadFileToCloudinarySuspended(requireContext(), file)
+
+            withContext(Dispatchers.Main) {
+                if (uploadedUrl != null) {
+                    Log.d("Cloudinary", "URL: $uploadedUrl")
+                    sendMessage(
+                        receiverId = receiverId,
+                        messageContent = "📷 Photo",
+                        messageType = MessageType.IMAGE,
+                        mediaUrl = uploadedUrl
+                    )
+                } else {
+                    Toast.makeText(requireContext(), "Image upload failed", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
+
+            file.delete()
+        }
+    }
+
 
     private suspend fun sendMessage(
         receiverId: String,
@@ -303,20 +442,30 @@ class UserChat : Fragment() {
             "timestamp" to FieldValue.serverTimestamp(),
             "isRead" to false
         )
+
+        // Update read status
         val chatRef = db.collection("Chats").document(currentChatId!!)
         chatRef.update("isReadStatus.${receiverId}", false)
 
-
         Log.d("UserChat", "Sending message from $currentUserId to $receiverId in chat $currentChatId")
+        Log.d("UserChat", "Message data: $messageData")
 
+        // Add message to subcollection
         db.collection("Chats")
             .document(currentChatId!!)
             .collection("messages")
             .add(messageData)
             .await()
 
+        // Update chat document with last message info
+        val lastMessageText = when (messageType) {
+            MessageType.TEXT -> messageContent
+            MessageType.IMAGE -> "📷 Image"
+            MessageType.VOICE -> "🎵 Voice message"
+        }
+
         val chatUpdateData = hashMapOf<String, Any>(
-            "lastMessage" to if (messageType == MessageType.TEXT && messageType == MessageType.IMAGE && messageType == MessageType.VOICE) messageContent else messageType.name,
+            "lastMessage" to lastMessageText,
             "lastMessageType" to messageType.name,
             "lastMessageAt" to FieldValue.serverTimestamp()
         )
@@ -328,6 +477,7 @@ class UserChat : Fragment() {
 
         Log.d("UserChat", "Message sent successfully to chat: $currentChatId")
     }
+
 
     private fun loadChatMessages() {
         if (currentChatId == null) {
@@ -390,16 +540,16 @@ class UserChat : Fragment() {
                                 sendMessage = if (isSentMessage) {
                                     when (messageType) {
                                         MessageType.TEXT -> message
-                                        MessageType.IMAGE -> "image"
-                                        MessageType.VOICE -> "voice"
+                                        MessageType.IMAGE -> message // Keep the original message (like "📷 Photo")
+                                        MessageType.VOICE -> message
                                     }
                                 } else null,
 
                                 recieveMessage = if (!isSentMessage) {
                                     when (messageType) {
                                         MessageType.TEXT -> message
-                                        MessageType.IMAGE -> "image"
-                                        MessageType.VOICE -> "voice"
+                                        MessageType.IMAGE -> message // Keep the original message (like "📷 Photo")
+                                        MessageType.VOICE -> message
                                     }
                                 } else null,
 
@@ -408,7 +558,7 @@ class UserChat : Fragment() {
                                 recieverImage = arguments?.getString("receiverImage"),
                                 time = time,
                                 messageType = messageType,
-                                mediaUrl = mediaUrl,
+                                mediaUrl = mediaUrl, // This is the key - make sure mediaUrl is passed
                                 senderId = senderId
                             )
 
@@ -434,31 +584,24 @@ class UserChat : Fragment() {
                 val receiverId = currentReceiverId ?: return@registerForActivityResult
 
                 val selectedImageUri: Uri? = data?.data
-                var imageUrl: String? = null
+                var finalUri: Uri? = selectedImageUri
 
-                if (selectedImageUri != null) {
-                    imageUrl = selectedImageUri.toString()
-                } else {
+                // If taken from camera, convert bitmap to Uri
+                if (finalUri == null) {
                     val bitmap = data?.extras?.get("data") as? Bitmap
                     if (bitmap != null) {
                         val path = MediaStore.Images.Media.insertImage(
-                            requireContext().contentResolver, bitmap, "IMG_" + System.currentTimeMillis(), null
+                            requireContext().contentResolver,
+                            bitmap,
+                            "IMG_${System.currentTimeMillis()}",
+                            null
                         )
-                        imageUrl = Uri.parse(path).toString()
+                        finalUri = Uri.parse(path)
                     }
                 }
 
-                if (imageUrl != null) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            sendMessage(receiverId, "", MessageType.IMAGE, imageUrl)
-                        } catch (e: Exception) {
-                            Log.e("UserChat", "Error sending image", e)
-                            CoroutineScope(Dispatchers.Main).launch {
-                                Toast.makeText(requireContext(), "Failed to send image: ${e.message}", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
+                finalUri?.let { uri ->
+                    handleSelectedImage(uri, receiverId)
                 }
             }
         }
@@ -473,26 +616,20 @@ class UserChat : Fragment() {
     }
 
     private fun handleVoiceRecording() {
-        if (ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
+            != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(
                 requireActivity(),
-                arrayOf(android.Manifest.permission.RECORD_AUDIO),
+                arrayOf(Manifest.permission.RECORD_AUDIO),
                 100
             )
             return
         }
-
-        if (!isRecording) {
-            startRecording()
-        } else {
-            stopRecording()
-        }
+        if (!isRecording) startRecording() else stopRecording()
     }
 
     private fun startRecording() {
-        val audioFile = File(requireContext().externalCacheDir, "audio_${System.currentTimeMillis()}.3gp")
+        val audioFile = File(requireContext().externalCacheDir, "voice_${System.currentTimeMillis()}.3gp")
         audioFilePath = audioFile.absolutePath
 
         mediaRecorder = MediaRecorder().apply {
@@ -507,34 +644,108 @@ class UserChat : Fragment() {
         isRecording = true
         Toast.makeText(requireContext(), "Recording started...", Toast.LENGTH_SHORT).show()
     }
+    suspend fun uploadVoiceToCloudinary(file: File): String? =
+        suspendCancellableCoroutine { cont ->
 
-    private fun stopRecording() {
-        mediaRecorder?.apply {
-            stop()
-            release()
-        }
-        mediaRecorder = null
-        isRecording = false
+            val config = mapOf(
+                "cloud_name" to "dlfn2oyqx",
+                "api_key" to "394479351886316",
+                "upload_preset" to "chatapp_preset"
+            )
 
-        val receiverId = currentReceiverId ?: return
-
-        if (audioFilePath != null) {
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    sendMessage(receiverId, "", MessageType.VOICE, audioFilePath)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        Toast.makeText(requireContext(), "Voice message sent", Toast.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    Log.e("UserChat", "Error sending voice message", e)
-                    CoroutineScope(Dispatchers.Main).launch {
-                        Toast.makeText(requireContext(), "Failed to send voice message: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
-                }
+            try {
+                MediaManager.get()
+            } catch (e: Exception) {
+                context?.let { MediaManager.init(it.applicationContext, config) }
             }
+            try {
+            MediaManager.get().upload(file.absolutePath)
+                .unsigned("chatapp_preset")
+                .option("resource_type", "video") // ⬅ important for .3gp
+                .callback(object : UploadCallback {
+                    override fun onStart(requestId: String?) {}
+
+                    override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
+
+                    override fun onSuccess(requestId: String?, resultData: Map<*, *>) {
+                        val url = resultData["secure_url"] as? String
+                        Log.d("Cloudinary", "Voice uploaded: $url")
+                        cont.resume(url, null)
+                    }
+
+                    override fun onError(requestId: String?, error: ErrorInfo?) {
+                        Log.e("Cloudinary", "Upload error: ${error?.description}")
+                        cont.resume(null, null)
+                    }
+
+                    override fun onReschedule(requestId: String?, error: ErrorInfo?) {
+                        cont.resume(null, null)
+                    }
+
+                }).dispatch()
+        } catch (e: Exception) {
+            Log.e("Cloudinary", "Upload exception", e)
+            cont.resume(null, null)
         }
     }
 
+    private fun stopRecording() {
+        try {
+            mediaRecorder?.apply {
+                stop()
+                release()
+            }
+            mediaRecorder = null
+            isRecording = false
+
+            val receiverId = currentReceiverId ?: return
+            val audioFile = File(audioFilePath ?: return)
+
+            if (!audioFile.exists()) {
+                Toast.makeText(requireContext(), "Audio file not found", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(requireContext(), "Uploading voice...", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+
+                    val mediaUrl = uploadVoiceToCloudinary(audioFile)
+
+                    withContext(Dispatchers.Main) {
+                        if (mediaUrl != null) {
+                            sendMessage(receiverId, "🎵 Voice message", MessageType.VOICE, mediaUrl)
+                            Toast.makeText(requireContext(), "Voice sent", Toast.LENGTH_SHORT)
+                                .show()
+                        } else {
+                            Toast.makeText(
+                                requireContext(),
+                                "Voice upload failed",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+
+                    audioFile.delete()
+
+                } catch (e: Exception) {
+                    Log.e("VoiceUpload", "Exception: ${e.message}", e)
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(
+                            requireContext(),
+                            "Error uploading voice",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("Recorder", "Stop failed: ${e.message}", e)
+        }
+    }
     companion object {
         fun newInstance(name: String, image: String, receiverId: String): UserChat {
             val fragment = UserChat()

@@ -50,6 +50,8 @@ dependencies {
     implementation ("androidx.navigation:navigation-ui-ktx:2.7.7")
     implementation ("com.github.bumptech.glide:glide:4.16.0")
     implementation(libs.firebase.database.ktx)
+    implementation(libs.androidx.espresso.core)
+    implementation(libs.play.services.cast.tv)
     annotationProcessor ("com.github.bumptech.glide:compiler:4.16.0")
     implementation ("com.google.android.material:material:1.12.0")
     implementation  ("io.livekit:livekit-android:2.9.0")
@@ -57,6 +59,12 @@ dependencies {
     implementation ("io.jsonwebtoken:jjwt-api:0.11.5")
     implementation ("io.jsonwebtoken:jjwt-impl:0.11.5")
     implementation ("io.jsonwebtoken:jjwt-jackson:0.11.5")
+    implementation ("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation ("com.cloudinary:cloudinary-android:2.3.1")
+    implementation ("com.github.Baseflow:PhotoView:2.3.0")
+
+
+
 
 
     implementation(libs.androidx.core.ktx)
