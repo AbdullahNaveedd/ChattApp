@@ -111,15 +111,12 @@ class Videocall : Fragment() {
             remoteRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
             localRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
 
-            // Z-order for overlaying
             remoteRenderer.setZOrderMediaOverlay(false)
             localRenderer.setZOrderMediaOverlay(true)
 
-            // Mirror settings
             localRenderer.setMirror(true)  // Mirror local video (front camera)
             remoteRenderer.setMirror(false)
 
-            // Make sure they're visible
             remoteRenderer.visibility = View.VISIBLE
             localRenderer.visibility = View.VISIBLE
 
@@ -195,7 +192,6 @@ class Videocall : Fragment() {
 
                         liveKitManager.enableAudio(true)
                         liveKitManager.enableVideo(true)
-
                         isMicEnabled = true
                         isCameraEnabled = true
                         updateButtonStates()

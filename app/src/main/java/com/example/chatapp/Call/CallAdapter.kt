@@ -49,7 +49,7 @@ class CallAdapter(private val calls: List<CallDataClass>,
           onCallClicked(true)
         }
         holder.videocallicon.setOnClickListener{
-                onCallClicked(false)
+            onCallClicked(false)
         }
         holder.profileImage.setOnClickListener {
             onitemClicked(message)

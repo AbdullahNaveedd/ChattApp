@@ -26,6 +26,7 @@
         <action
             android:id="@+id/action_setting_to_message"
             app:destination="@id/message" />
+
     </fragment>
     <fragment
         android:id="@+id/message"

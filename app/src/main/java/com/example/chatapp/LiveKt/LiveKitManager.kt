@@ -190,7 +190,7 @@ class LiveKitManager(
     fun enableVideo(enable: Boolean) {
         scope.launch {
             try {
-                if (::room.isInitialized) { // check whether the room is initialized
+                if (::room.isInitialized) {
                     if (enable && videoTrack == null) {
                         createAndPublishVideoTrack()
                     } else {
@@ -199,9 +199,6 @@ class LiveKitManager(
                         Log.d("LiveKit", "Video ${if (enable) "enabled" else "disabled"}")
                     }
 
-//                    else{
-//                        Log.d("LiveKit","Something went wrong while trying to enableVideo")
-//                    }
                 }
             } catch (e: Exception) {
                 Log.e("LiveKit", "Failed to toggle video", e)
