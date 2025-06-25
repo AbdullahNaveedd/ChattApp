@@ -450,12 +450,14 @@ class UserChat : Fragment() {
         Log.d("UserChat", "Sending message from $currentUserId to $receiverId in chat $currentChatId")
         Log.d("UserChat", "Message data: $messageData")
 
+        // Add message to subcollection
         db.collection("Chats")
             .document(currentChatId!!)
             .collection("messages")
             .add(messageData)
             .await()
 
+        // Update chat document with last message info
         val lastMessageText = when (messageType) {
             MessageType.TEXT -> messageContent
             MessageType.IMAGE -> "📷 Image"
@@ -538,7 +540,7 @@ class UserChat : Fragment() {
                                 sendMessage = if (isSentMessage) {
                                     when (messageType) {
                                         MessageType.TEXT -> message
-                                        MessageType.IMAGE -> message
+                                        MessageType.IMAGE -> message // Keep the original message (like "📷 Photo")
                                         MessageType.VOICE -> message
                                     }
                                 } else null,
@@ -546,7 +548,7 @@ class UserChat : Fragment() {
                                 recieveMessage = if (!isSentMessage) {
                                     when (messageType) {
                                         MessageType.TEXT -> message
-                                        MessageType.IMAGE -> message
+                                        MessageType.IMAGE -> message // Keep the original message (like "📷 Photo")
                                         MessageType.VOICE -> message
                                     }
                                 } else null,
@@ -584,6 +586,7 @@ class UserChat : Fragment() {
                 val selectedImageUri: Uri? = data?.data
                 var finalUri: Uri? = selectedImageUri
 
+                // If taken from camera, convert bitmap to Uri
                 if (finalUri == null) {
                     val bitmap = data?.extras?.get("data") as? Bitmap
                     if (bitmap != null) {
@@ -658,7 +661,7 @@ class UserChat : Fragment() {
             try {
             MediaManager.get().upload(file.absolutePath)
                 .unsigned("chatapp_preset")
-                .option("resource_type", "video")
+                .option("resource_type", "video") // ⬅ important for .3gp
                 .callback(object : UploadCallback {
                     override fun onStart(requestId: String?) {}
 
