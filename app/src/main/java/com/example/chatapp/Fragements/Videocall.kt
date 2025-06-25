@@ -114,7 +114,7 @@ class Videocall : Fragment() {
             remoteRenderer.setZOrderMediaOverlay(false)
             localRenderer.setZOrderMediaOverlay(true)
 
-            localRenderer.setMirror(true)  // Mirror local video (front camera)
+            localRenderer.setMirror(true)
             remoteRenderer.setMirror(false)
 
             remoteRenderer.visibility = View.VISIBLE
@@ -274,7 +274,6 @@ class Videocall : Fragment() {
 
     private fun updateButtonStates() {
         activity?.runOnUiThread {
-            // Update button icons based on current state
             videov.setImageResource(if (isCameraEnabled) R.drawable.videov else R.drawable.callredicon)
             micv.setImageResource(if (isMicEnabled) R.drawable.micv else R.drawable.callredicon)
         }

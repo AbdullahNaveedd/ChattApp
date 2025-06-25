@@ -168,7 +168,7 @@ class LiveKitManager(
         }
     }
 
-    private fun createAndPublishVideoTrack() {
+     fun createAndPublishVideoTrack() {
         scope.launch {
             try {
                 if (::room.isInitialized && videoTrack == null) {
