@@ -208,7 +208,7 @@ class Message : Fragment() {
                     return@addOnSuccessListener
                 }
                 val userName = userDoc.getString("name") ?: "Unknown User"
-                val userImage = userDoc.getString("imageUrl") ?: ""
+                val userImage = userDoc.getString("profilePicture") ?: ""
                 callback(userName, userImage)
             }
             .addOnFailureListener { exception ->

@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.example.chatapp.R
@@ -34,6 +35,8 @@ class MessageAdapter(
 
         holder.userName.text = messageData.name
         holder.messageTime.text = messageData.time
+
+        Log.d("ImageURL", "Profile URL: ${messageData.imageResId}")
 
         if (messageData.imageResId.isNotEmpty()) {
             Glide.with(holder.itemView.context)

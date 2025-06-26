@@ -133,14 +133,20 @@ class UserChat : Fragment() {
 
         val receiverName = arguments?.getString("receiverName") ?: "Unknown"
         callname.text = receiverName
+        currentReceiverId = arguments?.getString("receiverId")
+
 
         val receiverImage = arguments?.getString("receiverImage") ?: ""
         Glide.with(requireContext())
             .load(receiverImage)
+            .placeholder(R.drawable.profile)
+            .circleCrop()
             .into(callimage)
 
-        currentReceiverId = arguments?.getString("receiverId")
-    }
+//
+//        currentReceiverId = arguments?.getString("receiverId")
+
+}
 
     private fun setupRecyclerView() {
         recyclerViews.layoutManager = LinearLayoutManager(requireContext())
