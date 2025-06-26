@@ -40,6 +40,7 @@ import com.example.chatapp.R
 import com.cloudinary.android.MediaManager
 import com.cloudinary.android.callback.UploadCallback
 import com.cloudinary.android.callback.ErrorInfo
+import com.example.chatapp.Auth.Message.FullScreenActivity
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -143,10 +144,24 @@ class UserChat : Fragment() {
             .circleCrop()
             .into(callimage)
 
+        callimage.setOnClickListener {
+            context?.let { ctx ->
+                if (receiverImage.isNotEmpty()) {
+                    openFullScreenImage(ctx, receiverImage)
+                }
+            }
+        }
+
 //
 //        currentReceiverId = arguments?.getString("receiverId")
 
 }
+    private fun openFullScreenImage(context: android.content.Context, imageUrl: String) {
+        val intent = Intent(context, FullScreenActivity::class.java).apply {
+            putExtra(FullScreenActivity.EXTRA_IMAGE_URL, imageUrl)
+        }
+        context.startActivity(intent)
+    }
 
     private fun setupRecyclerView() {
         recyclerViews.layoutManager = LinearLayoutManager(requireContext())
