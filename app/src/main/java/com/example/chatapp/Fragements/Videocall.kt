@@ -72,7 +72,6 @@ class Videocall : Fragment() {
         }
 
         initializeViews(view)
-        setupVideoRenderers()
         setupClickListeners()
         initiateOrJoinVideoCall(view)
     }
@@ -95,37 +94,37 @@ class Videocall : Fragment() {
         Log.d("Videocall", "Views initialized - Local renderer: ${::localRenderer.isInitialized}, Remote renderer: ${::remoteRenderer.isInitialized}")
     }
 
-    private fun setupVideoRenderers() {
-        try {
-            eglBase?.release()
-            eglBase = null
-
-            eglBase = EglBase.create()
-            val eglContext = eglBase!!.eglBaseContext
-
-            if (!::remoteRenderer.isInitialized || !::localRenderer.isInitialized) {
-                Log.e("Videocall", "Renderers not properly initialized")
-                return
-            }
-
-            remoteRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
-            localRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
-
-            remoteRenderer.setZOrderMediaOverlay(false)
-            localRenderer.setZOrderMediaOverlay(true)
-
-            localRenderer.setMirror(true)
-            remoteRenderer.setMirror(false)
-
-            remoteRenderer.visibility = View.VISIBLE
-            localRenderer.visibility = View.VISIBLE
-
-            Log.d("Videocall", "Video renderers setup completed successfully")
-        } catch (e: Exception) {
-            Log.e("Videocall", "Error setting up video renderers", e)
-            showErrorAndReturn("Failed to setup video: ${e.message}")
-        }
-    }
+//    private fun setupVideoRenderers() {
+//        try {
+//            eglBase?.release()
+//            eglBase = null
+//
+//            eglBase = EglBase.create()
+//            val eglContext = eglBase!!.eglBaseContext
+//
+//            if (!::remoteRenderer.isInitialized || !::localRenderer.isInitialized) {
+//                Log.e("Videocall", "Renderers not properly initialized")
+//                return
+//            }
+//
+//            remoteRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+//            localRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
+//
+//            remoteRenderer.setZOrderMediaOverlay(false)
+//            localRenderer.setZOrderMediaOverlay(true)
+//
+//            localRenderer.setMirror(true)
+//            remoteRenderer.setMirror(false)
+//
+//            remoteRenderer.visibility = View.VISIBLE
+//            localRenderer.visibility = View.VISIBLE
+//
+//            Log.d("Videocall", "Video renderers setup completed successfully")
+//        } catch (e: Exception) {
+//            Log.e("Videocall", "Error setting up video renderers", e)
+//            showErrorAndReturn("Failed to setup video: ${e.message}")
+//        }
+//    }
 
     private fun initiateOrJoinVideoCall(view: View) {
         if (senderId == null || receiverId == null) {
@@ -182,18 +181,21 @@ class Videocall : Fragment() {
                 roomName = roomId,
                 participantName = senderId ?: "user"
             )
+            liveKitManager.setRenderers(localRenderer, remoteRenderer)
+
 
             liveKitManager.connect(
                 onConnected = {
                     activity?.runOnUiThread {
                         isCallActive = true
                         updateCallStatus("Video call connected")
-                        liveKitManager.setRenderers(localRenderer, remoteRenderer)
 
                         liveKitManager.enableAudio(true)
                         liveKitManager.enableVideo(true)
                         isMicEnabled = true
                         isCameraEnabled = true
+                        liveKitManager.enableVideo(isCameraEnabled)
+                        localRenderer.visibility=View.VISIBLE
                         updateButtonStates()
 
                         Log.d("Videocall", "Video call connected successfully")
@@ -248,7 +250,7 @@ class Videocall : Fragment() {
                 try {
                     isCameraEnabled = !isCameraEnabled
                     liveKitManager.enableVideo(isCameraEnabled)
-                    localRenderer.visibility = if (isCameraEnabled) View.VISIBLE else View.GONE
+                    localRenderer.visibility= if(isCameraEnabled) View.VISIBLE else View.GONE
                     updateButtonStates()
                     Log.d("Videocall", if (isCameraEnabled) "Camera Enabled" else "Camera Disabled")
                 } catch (e: Exception) {
@@ -303,10 +305,8 @@ class Videocall : Fragment() {
         if (requestCode == PERMISSION_REQUEST_CODE) {
             val allPermissionsGranted = grantResults.all { it == PackageManager.PERMISSION_GRANTED }
             if (allPermissionsGranted) {
-                // Restart the setup process
                 view?.let {
                     initializeViews(it)
-                    setupVideoRenderers()
                     setupClickListeners()
                     initiateOrJoinVideoCall(it)
                 }
@@ -396,12 +396,4 @@ class Videocall : Fragment() {
         }
     }
 
-
-    override fun onResume() {
-        super.onResume()
-        Log.d("Videocall", "Fragment resumed")
-        if (::liveKitManager.isInitialized && liveKitManager.isConnected() && isCameraEnabled) {
-            liveKitManager.enableVideo(true)
-        }
-    }
 }

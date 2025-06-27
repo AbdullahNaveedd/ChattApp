@@ -14,6 +14,7 @@ import io.livekit.android.room.track.RemoteVideoTrack
 import io.livekit.android.room.track.RemoteAudioTrack
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import livekit.org.webrtc.EglBase
 
 
 class LiveKitManager(
@@ -54,6 +55,7 @@ class LiveKitManager(
                 remoteRenderer?.let { room.initVideoRenderer(it) }
 
                 createAndPublishAudioTrack()
+                createAndPublishVideoTrack()
 
                 observeRoomEvents(onParticipantJoined, onParticipantLeft)
 
@@ -65,6 +67,24 @@ class LiveKitManager(
             }
 
 
+        }
+    }
+    fun createAndPublishVideoTrack() {
+        scope.launch {
+            try {
+                if (::room.isInitialized) {
+                    videoTrack = room.localParticipant.createVideoTrack()
+                    room.localParticipant.publishVideoTrack(videoTrack!!)
+                    Log.d("LiveKit", "Video track created and published successfully")
+
+                    localRenderer?.let {
+                        videoTrack?.addRenderer(it)
+                        Log.d("LiveKit", "Local video renderer attached")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("LiveKit", "Failed to create/publish video track", e)
+            }
         }
     }
 
@@ -143,16 +163,14 @@ class LiveKitManager(
         this.localRenderer = localRenderer
         this.remoteRenderer = remoteRenderer
 
-        if (::room.isInitialized) {
-            room.initVideoRenderer(localRenderer)
-            room.initVideoRenderer(remoteRenderer)
-        }
 
         videoTrack?.let { track ->
-            localRenderer.let { track.addRenderer(it) }
+            track.addRenderer(localRenderer)
+            Log.d("LiveKit", "Video renderer re-attached in setRenderers")
+        } ?: run {
+            createAndPublishVideoTrack()
         }
     }
-
 
     fun enableAudio(enable: Boolean) {
         scope.launch {
@@ -168,38 +186,14 @@ class LiveKitManager(
         }
     }
 
-     fun createAndPublishVideoTrack() {
-        scope.launch {
-            try {
-                if (::room.isInitialized && videoTrack == null) {
-                    videoTrack = room.localParticipant.createVideoTrack()
-                    room.localParticipant.publishVideoTrack(videoTrack!!)
-                    Log.d("LiveKit", "Video track created and published successfully")
-
-                    localRenderer?.let {
-                        videoTrack?.addRenderer(it)
-                        Log.d("LiveKit", "Local video renderer attached")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("LiveKit", "Failed to create/publish video track", e)
-            }
-        }
-    }
-
     fun enableVideo(enable: Boolean) {
         scope.launch {
             try {
                 if (::room.isInitialized) {
-                    if (enable && videoTrack == null) {
-                        createAndPublishVideoTrack()
-                    } else {
                         room.localParticipant.setCameraEnabled(enable)
                         isVideoEnabled = enable
                         Log.d("LiveKit", "Video ${if (enable) "enabled" else "disabled"}")
                     }
-
-                }
             } catch (e: Exception) {
                 Log.e("LiveKit", "Failed to toggle video", e)
             }
