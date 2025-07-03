@@ -7,6 +7,8 @@
     android:layout_height="match_parent"
     android:background="@color/onboarding"
     tools:context=".Activity.Onboarding"
+    xmlns:ads="http://schemas.android.com/apk/res-auto"
+
     >
 
     <ImageView
@@ -201,6 +203,16 @@
         android:textSize="@dimen/_12sdp"
         app:layout_constraintStart_toEndOf="@+id/existingaccount"
         app:layout_constraintBottom_toBottomOf="@+id/existingaccount"
+        />
+    <com.google.android.gms.ads.AdView
+        android:id="@+id/adView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        ads:adSize="BANNER"
+        ads:adUnitId="ca-app-pub-3940256099942544/6300978111"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         />
 
 

@@ -24,7 +24,10 @@ class CallManager {
             val roomId = generateConsistentRoomName(senderId, receiverId)
             val callRoomRef = database.child("calls").child(roomId)
 
-            Log.d("CallManager", "Initiating call - Room: $roomId, Sender: $senderId, Receiver: $receiverId")
+            Log.d(
+                "CallManager",
+                "Initiating call - Room: $roomId, Sender: $senderId, Receiver: $receiverId"
+            )
 
             checkForActiveCall(senderId, receiverId) { existingRoomId ->
                 if (existingRoomId != null) {
@@ -45,7 +48,13 @@ class CallManager {
                                     }
                                 } else {
                                     Log.d("CallManager", "Creating new room...")
-                                    createNewRoom(roomId, senderId, receiverId, onRoomCreated, onError)
+                                    createNewRoom(
+                                        roomId,
+                                        senderId,
+                                        receiverId,
+                                        onRoomCreated,
+                                        onError
+                                    )
                                 }
                             } catch (e: Exception) {
                                 Log.e("CallManager", "Error in onDataChange", e)
@@ -108,6 +117,7 @@ class CallManager {
             callback(null)
         }
     }
+
     private fun createNewRoom(
         roomId: String,
         creatorId: String,
@@ -214,6 +224,7 @@ class CallManager {
             onError("Failed to join room: ${e.message}")
         }
     }
+
     private fun generateConsistentRoomName(senderId: String, receiverId: String): String {
         val participants = listOf(senderId, receiverId).sorted()
         return "call_${participants.joinToString("_")}"
@@ -321,13 +332,18 @@ class CallManager {
                             Log.d("CallManager", "Participants in room $roomId: $participantsList")
 
                             if (participantsList.size >= 2) {
-                                database.child("calls").child(roomId).child("status").setValue("active")
-                                Log.d("CallManager", "Call is now active with ${participantsList.size} participants")
+                                database.child("calls").child(roomId).child("status")
+                                    .setValue("active")
+                                Log.d(
+                                    "CallManager",
+                                    "Call is now active with ${participantsList.size} participants"
+                                )
                             }
                         } catch (e: Exception) {
                             Log.e("CallManager", "Error processing participants", e)
                         }
                     }
+
                     override fun onCancelled(error: DatabaseError) {
                         Log.e("CallManager", "Error listening for participants: ${error.message}")
                     }
@@ -336,6 +352,7 @@ class CallManager {
             Log.e("CallManager", "Error setting up participant listener", e)
         }
     }
+
     fun joinExistingRoom(
         roomId: String,
         userId: String,
@@ -377,10 +394,17 @@ class CallManager {
 
                                 callRoomRef.updateChildren(updates)
                                     .addOnSuccessListener {
-                                        Log.d("CallManager", "Successfully updated room participants")
+                                        Log.d(
+                                            "CallManager",
+                                            "Successfully updated room participants"
+                                        )
                                     }
                                     .addOnFailureListener { exception ->
-                                        Log.e("CallManager", "Failed to update participants", exception)
+                                        Log.e(
+                                            "CallManager",
+                                            "Failed to update participants",
+                                            exception
+                                        )
                                     }
                             }
 

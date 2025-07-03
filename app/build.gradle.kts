@@ -62,6 +62,8 @@ dependencies {
     implementation ("com.squareup.okhttp3:okhttp:4.12.0")
     implementation ("com.cloudinary:cloudinary-android:2.3.1")
     implementation ("com.github.Baseflow:PhotoView:2.3.0")
+    implementation("com.google.android.gms:play-services-ads:24.4.0")
+
 
 
     implementation(libs.androidx.core.ktx)
