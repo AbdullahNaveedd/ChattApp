@@ -68,12 +68,12 @@ class Message : Fragment() {
 
         val statusList = listOf(
             Status("Ali", R.drawable.profile),
-            Status("Ahmed", R.drawable.profile),
-            Status("Uzair", R.drawable.profile),
-            Status("Sara", R.drawable.profile),
-            Status("Faizan", R.drawable.profile),
-            Status("Mubashir", R.drawable.profile),
-            Status("Hamza", R.drawable.profile)
+            Status("Ahmed", R.drawable.google),
+            Status("Uzair", R.drawable.googlew),
+            Status("Sara", R.drawable.applew),
+            Status("Faizan", R.drawable.acceptcall),
+            Status("Mubashir", R.drawable.declinecall),
+            Status("Hamza", R.drawable.fb)
         )
         statusRecyclerView.adapter = StatusAdapter(statusList)
     }
