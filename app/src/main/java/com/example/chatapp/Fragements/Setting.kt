@@ -8,14 +8,18 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.chatapp.Activity.Onboarding
+import com.example.chatapp.Auth.instances.Firebase.db
 import com.example.chatapp.Call.CallAdapter
 import com.example.chatapp.Call.CallDataClass
 import com.example.chatapp.R
+import com.google.firebase.auth.FirebaseAuth
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -33,6 +37,8 @@ class Setting : Fragment() {
     private var param2: String? = null
     private lateinit var btnlogout:Button
     private  lateinit var backbtn:ImageView
+    private  lateinit var userImage:ImageView
+    private  lateinit var userName:TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,6 +59,9 @@ class Setting : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         backbtn = view.findViewById(R.id.backbtn)
         btnlogout = view.findViewById(R.id.btnlogout)
+        userName = view.findViewById(R.id.user_name)
+        userImage = view.findViewById(R.id.user_image)
+        Profileimg()
 
         btnlogout.setOnClickListener{
             val sharedPref = requireContext().getSharedPreferences("auth_pref" ,AppCompatActivity.MODE_PRIVATE)
@@ -66,6 +75,7 @@ class Setting : Fragment() {
             findNavController().navigate(R.id.action_setting_to_message)
 
         }
+
 
         val recyclerViews = view.findViewById<RecyclerView>(R.id.callrecyclerview)
         recyclerViews.layoutManager = LinearLayoutManager(requireContext())
@@ -87,6 +97,40 @@ class Setting : Fragment() {
             }
         )
     }
+    private fun Profileimg() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+        if (userId != null) {
+            db.collection("Users").document(userId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val imageUrl = document.getString("profilePicture")
+                        val name = document.getString("name")
+
+                        if (isAdded && context != null) {
+                            userName.text = name ?: "Guest"
+
+                            if (!imageUrl.isNullOrEmpty()) {
+                                Glide.with(requireContext())
+                                    .load(imageUrl)
+                                    .circleCrop()
+                                    .placeholder(R.drawable.profile)
+                                    .into(userImage)
+                            } else {
+                                userImage.setImageResource(R.drawable.profile)
+                            }
+                        }
+                    }
+                }
+                .addOnFailureListener {
+                    if (isAdded) {
+                        userImage.setImageResource(R.drawable.profile)
+                    }
+                }
+        }
+    }
+
 
     companion object {
         /**
