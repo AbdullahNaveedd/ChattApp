@@ -67,13 +67,13 @@ class Message : Fragment() {
         statusRecyclerView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
 
         val statusList = listOf(
-            Status("Emma", R.drawable.profile),
-            Status("Liam", R.drawable.profile),
-            Status("Olivia", R.drawable.profile),
-            Status("John", R.drawable.profile),
-            Status("Emma", R.drawable.profile),
-            Status("Liam", R.drawable.profile),
-            Status("Olivia", R.drawable.profile)
+            Status("Ali", R.drawable.profile),
+            Status("Ahmed", R.drawable.profile),
+            Status("Uzair", R.drawable.profile),
+            Status("Sara", R.drawable.profile),
+            Status("Faizan", R.drawable.profile),
+            Status("Mubashir", R.drawable.profile),
+            Status("Hamza", R.drawable.profile)
         )
         statusRecyclerView.adapter = StatusAdapter(statusList)
     }
