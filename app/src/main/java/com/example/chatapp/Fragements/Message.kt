@@ -7,18 +7,22 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.example.chatapp.Auth.Message.MessageDataClass
 import com.example.chatapp.Auth.Message.MessageAdapter
 import com.example.chatapp.Auth.Message.Status
 import com.example.chatapp.Auth.Message.StatusAdapter
+import com.example.chatapp.Auth.instances.Firebase
 import com.example.chatapp.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -28,6 +32,7 @@ class Message : Fragment() {
     private lateinit var statusRecyclerView: RecyclerView
     private lateinit var messageRecyclerView: RecyclerView
     private lateinit var messageAdapter: MessageAdapter
+    private lateinit var img: ImageView
     private val messageList = mutableListOf<MessageDataClass>()
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -47,13 +52,16 @@ class Message : Fragment() {
         initializeViews(view)
         setupStatusRecyclerView()
         setupMessageRecyclerView()
+        Profileimg()
         initializeCurrentUser()
     }
 
     private fun initializeViews(view: View) {
         statusRecyclerView = view.findViewById(R.id.statusRecyclerView)
         messageRecyclerView = view.findViewById(R.id.messagerecyclerview)
-    }
+        img= view.findViewById(R.id.profileimage)
+
+        }
 
     private fun setupStatusRecyclerView() {
         statusRecyclerView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
@@ -77,6 +85,37 @@ class Message : Fragment() {
         }
         messageRecyclerView.adapter = messageAdapter
     }
+    private fun Profileimg() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+        if (userId != null) {
+            db.collection("Users").document(userId)
+                .get()
+                .addOnSuccessListener { document ->
+                    if (document.exists()) {
+                        val imageUrl = document.getString("profilePicture")
+
+                        if (isAdded && context != null) {
+                            if (!imageUrl.isNullOrEmpty()) {
+                                Glide.with(requireContext())
+                                    .load(imageUrl)
+                                    .circleCrop()
+                                    .placeholder(R.drawable.profile)
+                                    .into(img)
+                            } else {
+                                img.setImageResource(R.drawable.profile)
+                            }
+                        }
+                    }
+                }
+                .addOnFailureListener {
+                    if (isAdded) {
+                        img.setImageResource(R.drawable.profile)
+                    }
+                }
+        }
+    }
+
 
     private fun initializeCurrentUser() {
         val firebaseUser = auth.currentUser
