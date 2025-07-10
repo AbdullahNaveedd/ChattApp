@@ -36,7 +36,7 @@ class CallAdapter(private val calls: List<CallDataClass>,
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
         val message = calls[position]
 
-        holder.name.text = message.name
+        holder.name.text = message.name.replaceFirstChar { it.uppercaseChar() }
         holder.description.text = message.description ?: ""
 
         Glide.with(holder.itemView.context)

@@ -33,7 +33,7 @@ class MessageAdapter(
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
         val messageData = messageList[position]
 
-        holder.userName.text = messageData.name
+        holder.userName.text = messageData.name.replaceFirstChar { it.uppercaseChar() }
         holder.messageTime.text = messageData.time
 
         Log.d("ImageURL", "Profile URL: ${messageData.imageResId}")

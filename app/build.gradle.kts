@@ -55,6 +55,7 @@ dependencies {
     annotationProcessor ("com.github.bumptech.glide:compiler:4.16.0")
     implementation ("com.google.android.material:material:1.12.0")
     implementation  ("io.livekit:livekit-android:2.9.0")
+    implementation ("com.airbnb.android:lottie:6.0.0")
 
     implementation ("io.jsonwebtoken:jjwt-api:0.11.5")
     implementation ("io.jsonwebtoken:jjwt-impl:0.11.5")
