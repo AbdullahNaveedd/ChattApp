@@ -17,7 +17,6 @@ import androidx.core.content.ContextCompat
 import com.example.chatapp.Call.CallManager
 import com.example.chatapp.LiveKt.LiveKitManager
 import com.example.chatapp.R
-import com.google.firebase.firestore.FirebaseFirestore
 import io.livekit.android.renderer.SurfaceViewRenderer
 import livekit.org.webrtc.EglBase
 
@@ -97,22 +96,11 @@ class VoiceCall : Fragment() {
                 Log.d("VoiceCall", "Room created/joined: $roomId")
                 currentRoomId = roomId
 
-                val usersRef = FirebaseFirestore.getInstance().collection("users")
-                usersRef.document(receiverId!!).get().addOnSuccessListener { document ->
-                    val name = document.getString("name") ?: "User"
-                    if (isCallInitiator) {
-                        updateCallStatus("Calling $name...")
-                    } else {
-                        updateCallStatus("Joining call with $name...")
-                    }
-                }.addOnFailureListener {
-                    if (isCallInitiator) {
-                        updateCallStatus("Calling user...")
-                    } else {
-                        updateCallStatus("Joining call...")
-                    }
+                if (isCallInitiator) {
+                    updateCallStatus("Calling ${receiverId}...")
+                } else {
+                    updateCallStatus("Joining call...")
                 }
-
                 setupLiveKit(view, roomId, token)
             },
             onError = { error ->
