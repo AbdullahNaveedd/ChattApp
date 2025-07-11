@@ -109,7 +109,7 @@ class Setting : Fragment() {
                         val name = document.getString("name")
 
                         if (isAdded && context != null) {
-                            userName.text = name ?: "Guest"
+                            userName.text = name?.replaceFirstChar { it.uppercaseChar() } ?: "Guest"
 
                             if (!imageUrl.isNullOrEmpty()) {
                                 Glide.with(requireContext())

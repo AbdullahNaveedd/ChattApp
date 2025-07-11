@@ -60,6 +60,7 @@ class FullScreenActivity : AppCompatActivity() {
 
         Glide.with(this)
             .load(imageUrl)
+            .fitCenter()
             .diskCacheStrategy(DiskCacheStrategy.ALL)
             .listener(object : RequestListener<android.graphics.drawable.Drawable> {
                 override fun onLoadFailed(

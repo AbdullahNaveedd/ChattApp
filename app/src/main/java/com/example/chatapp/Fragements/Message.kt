@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.example.chatapp.Auth.Message.FullScreenActivity
 import com.example.chatapp.Auth.Message.MessageDataClass
 import com.example.chatapp.Auth.Message.MessageAdapter
 import com.example.chatapp.Auth.Message.Status
@@ -60,8 +61,14 @@ class Message : Fragment() {
         statusRecyclerView = view.findViewById(R.id.statusRecyclerView)
         messageRecyclerView = view.findViewById(R.id.messagerecyclerview)
         img= view.findViewById(R.id.profileimage)
-
+        img.setOnClickListener {
+            val fullUrl = img.tag as? String
+            fullUrl?.let {
+                openFullScreenImage(requireContext(), it)
+            }
         }
+
+    }
 
     private fun setupStatusRecyclerView() {
         statusRecyclerView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
@@ -76,6 +83,13 @@ class Message : Fragment() {
             Status("Hamza", R.drawable.fb)
         )
         statusRecyclerView.adapter = StatusAdapter(statusList)
+    }
+
+    private fun openFullScreenImage(context: android.content.Context, imageUrl: String) {
+        val intent = Intent(context, FullScreenActivity::class.java).apply {
+            putExtra(FullScreenActivity.EXTRA_IMAGE_URL, imageUrl)
+        }
+        context.startActivity(intent)
     }
 
     private fun setupMessageRecyclerView() {
@@ -102,6 +116,7 @@ class Message : Fragment() {
                                     .circleCrop()
                                     .placeholder(R.drawable.profile)
                                     .into(img)
+                                    img.tag =imageUrl
                             } else {
                                 img.setImageResource(R.drawable.profile)
                             }
