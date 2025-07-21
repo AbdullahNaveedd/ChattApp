@@ -19,6 +19,14 @@ import com.example.chatapp.LiveKt.LiveKitManager
 import com.example.chatapp.R
 import io.livekit.android.renderer.SurfaceViewRenderer
 import livekit.org.webrtc.EglBase
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import org.json.JSONObject
+import java.io.IOException
 
 class VoiceCall : Fragment() {
     private lateinit var backbtn: ImageView
@@ -37,6 +45,8 @@ class VoiceCall : Fragment() {
     private lateinit var callManager: CallManager
     private var currentRoomId: String? = null
     private var isCallActive = false
+    private var isIncomingCall: Boolean = false
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +54,18 @@ class VoiceCall : Fragment() {
             senderId = it.getString("senderId")
             receiverId = it.getString("receiverId")
             isCallInitiator = it.getBoolean("isCallInitiator", false)
+            currentRoomId = it.getString("roomId")
+
+            Log.d("VoiceCallDebug", "Arguments received:")
+            Log.d("VoiceCallDebug", "senderId: $senderId")
+            Log.d("VoiceCallDebug", "receiverId: $receiverId")
+            Log.d("VoiceCallDebug", "roomId: $currentRoomId")
+            Log.d("VoiceCallDebug", "isCallInitiator: $isCallInitiator")
+
+
+            if (currentRoomId == null) {
+                Log.e("VoiceCallDebug", "Room ID is null!")
+            }
         }
 
         callManager = CallManager()
@@ -58,6 +80,7 @@ class VoiceCall : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
 
         requestMicPermission()
         initializeViews(view)
@@ -86,31 +109,90 @@ class VoiceCall : Fragment() {
             showErrorAndReturn("Invalid user IDs")
             return
         }
+
         updateCallStatus("Connecting...")
         Log.d("VoiceCall", "Starting call - Sender: $senderId, Receiver: $receiverId")
 
-        callManager.initiateCall(
-            senderId = senderId!!,
-            receiverId = receiverId!!,
-            onRoomCreated = { roomId, token ->
-                Log.d("VoiceCall", "Room created/joined: $roomId")
-                currentRoomId = roomId
+        if (isCallInitiator) {
+            callManager.initiateCall(
 
-                if (isCallInitiator) {
-                    updateCallStatus("Calling ${receiverId}...")
-                } else {
-                    updateCallStatus("Joining call...")
+                senderId = senderId!!,
+                receiverId = receiverId!!,
+                onRoomCreated = { roomId, token ->
+                    currentRoomId = roomId
+                    updateCallStatus("Calling $receiverId...")
+                    setupLiveKit(view, roomId, token)
+                },
+                onError = { error ->
+                    Log.e("VoiceCall", "Call initiation error: $error")
+                    showErrorAndReturn("Connection failed: $error")
                 }
-                setupLiveKit(view, roomId, token)
-            },
-            onError = { error ->
-                Log.e("VoiceCall", "Call initiation error: $error")
-                showErrorAndReturn("Connection failed: $error")
+            )
+        } else {
+            if (currentRoomId == null) {
+                showErrorAndReturn("Invalid room ID for incoming call")
+                return
             }
-        )
+            fetchTokenAndJoin(view, currentRoomId!!, senderId!!)
+        }
     }
 
-    private fun updateCallStatus(status: String) {
+    private fun fetchTokenAndJoin(view: View, roomId: String, userId: String) {
+        updateCallStatus("Joining call...")
+
+        val client = okhttp3.OkHttpClient()
+        val json = org.json.JSONObject()
+        json.put("roomId", roomId)
+        json.put("userId", userId)
+
+        val mediaType = "application/json".toMediaType()
+        val body = json.toString().toRequestBody(mediaType)
+
+        val request = Request.Builder()
+            .url("http://192.168.106.145:3000/get-token")
+            .post(body)
+            .addHeader("Content-Type", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e("VoiceCall", "Token fetch failed: ${e.message}")
+                requireActivity().runOnUiThread {
+                    showErrorAndReturn("Failed to fetch token")
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                Log.d("testingCallResponse","$response")
+                if (response.isSuccessful) {
+                    response.body?.string()?.let {
+                        try {
+                            val token = JSONObject(it).getString("token")
+                            requireActivity().runOnUiThread {
+                                setupLiveKit(view, roomId, token)
+                            }
+                        } catch (ex: Exception) {
+                            Log.e("VoiceCall", "Token parse error: ${ex.message}")
+                            requireActivity().runOnUiThread {
+                                showErrorAndReturn("Failed to parse token")
+                            }
+                        }
+                    } ?: requireActivity().runOnUiThread {
+                        showErrorAndReturn("Empty token response")
+                    }
+                } else {
+                    Log.e("VoiceCall", "Token request failed: ${response.message}")
+                    requireActivity().runOnUiThread {
+                        showErrorAndReturn("Token request failed")
+                    }
+                }
+            }
+        })
+    }
+
+
+
+            private fun updateCallStatus(status: String) {
         activity?.runOnUiThread {
             imgname.text = status
         }

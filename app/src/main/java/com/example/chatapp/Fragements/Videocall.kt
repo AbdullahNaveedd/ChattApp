@@ -39,6 +39,8 @@ class Videocall : Fragment() {
     private var isCameraEnabled = true
     private var isMicEnabled = true
     private var eglBase: EglBase? = null
+    private var isIncomingCall: Boolean = false
+
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 1001
@@ -51,6 +53,8 @@ class Videocall : Fragment() {
             receiverId = it.getString("receiverId")
             roomId = it.getString("roomId")
             isCallInitiator = it.getBoolean("isCallInitiator", false)
+            isIncomingCall = it.getBoolean("isIncomingCall", false)
+
         }
 
         callManager = CallManager()
@@ -94,38 +98,6 @@ class Videocall : Fragment() {
         Log.d("Videocall", "Views initialized - Local renderer: ${::localRenderer.isInitialized}, Remote renderer: ${::remoteRenderer.isInitialized}")
     }
 
-//    private fun setupVideoRenderers() {
-//        try {
-//            eglBase?.release()
-//            eglBase = null
-//
-//            eglBase = EglBase.create()
-//            val eglContext = eglBase!!.eglBaseContext
-//
-//            if (!::remoteRenderer.isInitialized || !::localRenderer.isInitialized) {
-//                Log.e("Videocall", "Renderers not properly initialized")
-//                return
-//            }
-//
-//            remoteRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
-//            localRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
-//
-//            remoteRenderer.setZOrderMediaOverlay(false)
-//            localRenderer.setZOrderMediaOverlay(true)
-//
-//            localRenderer.setMirror(true)
-//            remoteRenderer.setMirror(false)
-//
-//            remoteRenderer.visibility = View.VISIBLE
-//            localRenderer.visibility = View.VISIBLE
-//
-//            Log.d("Videocall", "Video renderers setup completed successfully")
-//        } catch (e: Exception) {
-//            Log.e("Videocall", "Error setting up video renderers", e)
-//            showErrorAndReturn("Failed to setup video: ${e.message}")
-//        }
-//    }
-
     private fun initiateOrJoinVideoCall(view: View) {
         if (senderId == null || receiverId == null) {
             showErrorAndReturn("Invalid user IDs")
@@ -137,9 +109,9 @@ class Videocall : Fragment() {
             callManager.joinExistingRoom(
                 roomId = roomId!!,
                 userId = senderId!!,
-                onTokenReceived = { token ->
-                    currentRoomId = roomId
-                    setupLiveKit(view, roomId!!, token)
+                onRoomJoined = { receivedRoomId, token ->
+                    currentRoomId = receivedRoomId
+                    setupLiveKit(view, receivedRoomId, token)
                 },
                 onError = { error ->
                     Log.e("Videocall", "Error joining existing room: $error")

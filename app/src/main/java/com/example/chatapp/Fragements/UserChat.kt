@@ -41,6 +41,8 @@ import com.cloudinary.android.MediaManager
 import com.cloudinary.android.callback.UploadCallback
 import com.cloudinary.android.callback.ErrorInfo
 import com.example.chatapp.Auth.Message.FullScreenActivity
+import com.example.chatapp.Call.CallManager
+import com.example.chatapp.CallNotification.NotificationTokenManager
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -52,15 +54,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
-import okhttp3.FormBody
-import okhttp3.MediaType
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -91,6 +84,9 @@ class UserChat : Fragment() {
     private var currentUserId: String? = null
     private var currentChatId: String? = null
     private var currentReceiverId: String? = null
+    private var currentRoomId: String? = null
+    private var isCallActive = false
+    private var isIncomingCall: Boolean = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -175,6 +171,10 @@ class UserChat : Fragment() {
         val cam = view?.findViewById<ImageView>(R.id.cam)
 
         videobtn.setOnClickListener {
+            NotificationTokenManager.getToken()?.let { token ->
+                currentUserId?.let { it1 -> NotificationTokenManager.saveTokenToFirestore(it1, token) }
+            }
+
             val fragment = Videocall().apply {
                 arguments = Bundle().apply {
                     putString("senderId", currentUserId)
@@ -185,13 +185,32 @@ class UserChat : Fragment() {
         }
 
         voicebtn.setOnClickListener {
-            val fragment = VoiceCall().apply {
-                arguments = Bundle().apply {
-                    putString("senderId", currentUserId)
-                    putString("receiverId", currentReceiverId)
+            NotificationTokenManager.getToken()?.let { token ->
+                currentUserId?.let { userId ->
+                    NotificationTokenManager.saveTokenToFirestore(userId, token)
                 }
             }
-            navigateToFragment(fragment)
+            val callManager = CallManager()
+            callManager.initiateCall(
+                senderId = currentUserId!!,
+                receiverId = currentReceiverId!!,
+                onRoomCreated = { roomId, token ->
+                    val fragment = VoiceCall().apply {
+                        arguments = Bundle().apply {
+                            putString("senderId", currentUserId)
+                            putString("receiverId", currentReceiverId)
+                            putString("roomId", roomId)
+                            putBoolean("isCallInitiator", true)
+                            putBoolean("isIncomingCall", false) // initiator is not "incoming"
+                        }
+                    }
+                    navigateToFragment(fragment)
+                },
+                onError = { error ->
+                    Log.e("VoiceCall", "Error initiating call: $error")
+                    Toast.makeText(requireContext(), "Call failed: $error", Toast.LENGTH_SHORT).show()
+                }
+            )
         }
 
         backbtn.setOnClickListener {

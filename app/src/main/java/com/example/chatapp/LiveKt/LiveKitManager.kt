@@ -16,7 +16,6 @@ import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import livekit.org.webrtc.EglBase
 
-
 class LiveKitManager(
     private val context: Context,
     private val serverUrl: String,
@@ -29,10 +28,9 @@ class LiveKitManager(
     private var remoteRenderer: SurfaceViewRenderer? = null
     private var localRenderer: SurfaceViewRenderer? = null
     private var audioTrack: LocalAudioTrack? = null
-
-    private var isAudioEnabled = true
     private var videoTrack: LocalVideoTrack? = null
 
+    private var isAudioEnabled = true
     private var isVideoEnabled = false
     private var isSpeakerEnabled = true
 
@@ -45,12 +43,18 @@ class LiveKitManager(
         scope.launch {
             try {
                 room = LiveKit.create(appContext = context)
+                room.audioHandler.start()
 
                 room.connect(
                     url = serverUrl,
                     token = token,
                     options = ConnectOptions(autoSubscribe = true)
                 )
+
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                audioManager.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
+                audioManager.isSpeakerphoneOn = true
+
                 localRenderer?.let { room.initVideoRenderer(it) }
                 remoteRenderer?.let { room.initVideoRenderer(it) }
 
@@ -65,10 +69,25 @@ class LiveKitManager(
                 Log.e("LiveKit", "Connection failed", e)
                 onError(e.localizedMessage ?: "Connection failed")
             }
-
-
         }
     }
+
+    private fun createAndPublishAudioTrack() {
+        scope.launch {
+            try {
+                if (::room.isInitialized) {
+                    audioTrack = room.localParticipant.createAudioTrack()
+                    room.localParticipant.publishAudioTrack(audioTrack!!)
+                    room.localParticipant.setMicrophoneEnabled(true)
+
+                    Log.d("LiveKit", "Audio track created and published successfully")
+                }
+            } catch (e: Exception) {
+                Log.e("LiveKit", "Failed to create/publish audio track", e)
+            }
+        }
+    }
+
     fun createAndPublishVideoTrack() {
         scope.launch {
             try {
@@ -88,27 +107,9 @@ class LiveKitManager(
         }
     }
 
-    private fun createAndPublishAudioTrack() {
-        scope.launch {
-            try {
-                if (::room.isInitialized) {
-                    audioTrack = room.localParticipant.createAudioTrack()
-                    room.localParticipant.publishAudioTrack(audioTrack!!)
-
-                    Log.d("LiveKit", "Audio track created and published successfully")
-                }
-            } catch (e: Exception) {
-                Log.e("LiveKit", "Failed to create/publish audio track", e)
-            }
-        }
-    }
-
     private fun observeRoomEvents(
-
         onParticipantJoined: (String) -> Unit,
         onParticipantLeft: (String) -> Unit
-
-
     ) {
         scope.launch {
             room.events.collect { event ->
@@ -137,6 +138,7 @@ class LiveKitManager(
                                     Log.d("LiveKit", "Remote video track added to renderer")
                                 }
                             }
+
                             is RemoteAudioTrack -> {
                                 Log.d("LiveKit", "Remote audio track received - audio should now work")
                             }
@@ -162,7 +164,6 @@ class LiveKitManager(
     fun setRenderers(localRenderer: SurfaceViewRenderer, remoteRenderer: SurfaceViewRenderer) {
         this.localRenderer = localRenderer
         this.remoteRenderer = remoteRenderer
-
 
         videoTrack?.let { track ->
             track.addRenderer(localRenderer)
@@ -190,10 +191,10 @@ class LiveKitManager(
         scope.launch {
             try {
                 if (::room.isInitialized) {
-                        room.localParticipant.setCameraEnabled(enable)
-                        isVideoEnabled = enable
-                        Log.d("LiveKit", "Video ${if (enable) "enabled" else "disabled"}")
-                    }
+                    room.localParticipant.setCameraEnabled(enable)
+                    isVideoEnabled = enable
+                    Log.d("LiveKit", "Video ${if (enable) "enabled" else "disabled"}")
+                }
             } catch (e: Exception) {
                 Log.e("LiveKit", "Failed to toggle video", e)
             }
@@ -214,14 +215,17 @@ class LiveKitManager(
 
     fun toggleSpeaker(): Boolean {
         isSpeakerEnabled = !isSpeakerEnabled
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        audioManager.isSpeakerphoneOn = isSpeakerEnabled
         Log.d("LiveKit", "Speaker ${if (isSpeakerEnabled) "enabled" else "disabled"}")
-        return !isSpeakerEnabled
+        return isSpeakerEnabled
     }
 
     fun disconnect() {
         scope.launch {
             try {
                 if (::room.isInitialized) {
+                    room.audioHandler.stop()
                     audioTrack?.let {
                         room.localParticipant.unpublishTrack(it)
                         it.stop()

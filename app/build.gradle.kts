@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.firebase.database.ktx)
     implementation(libs.androidx.espresso.core)
     implementation(libs.play.services.cast.tv)
+    implementation(libs.firebase.functions.ktx)
     annotationProcessor ("com.github.bumptech.glide:compiler:4.16.0")
     implementation ("com.google.android.material:material:1.12.0")
     implementation  ("io.livekit:livekit-android:2.9.0")
@@ -64,7 +65,7 @@ dependencies {
     implementation ("com.cloudinary:cloudinary-android:2.3.1")
     implementation ("com.github.Baseflow:PhotoView:2.3.0")
     implementation("com.google.android.gms:play-services-ads:24.4.0")
-
+    implementation ("com.google.firebase:firebase-messaging:23.4.0")
 
 
     implementation(libs.androidx.core.ktx)
