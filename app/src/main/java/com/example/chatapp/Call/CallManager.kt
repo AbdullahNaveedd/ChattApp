@@ -24,7 +24,7 @@ class CallManager {
 
     private val LIVEKIT_API_KEY = "APIYJKVwDFd2gTv"
     private val LIVEKIT_SECRET_KEY = "RIOnqBjnnKfBllyuKUKzDhBeZU4KV84laKf9FSIwXO2B"
-    private val NOTIFICATION_SERVER_URL = "http://192.168.106.145:3000/message"
+    private val NOTIFICATION_SERVER_URL = "http://192.168.153.145:3000/message"
 
     fun initiateCall(
         senderId: String?,
@@ -232,7 +232,7 @@ class CallManager {
 
                         if (!fcmToken.isNullOrEmpty()) {
                             Log.d("CallManager", "Sending notification to $receiverId with token: ${fcmToken.take(20)}...")
-                            sendNotificationViaHTTP(fcmToken, senderName, callType, senderId, roomId)
+                            sendNotificationViaHTTP(fcmToken, senderName, callType, senderId, roomId,receiverId)
                         } else {
                             Log.w("CallManager", "No FCM token found for receiver: $receiverId")
                             Log.d("CallManager", "Available fields in receiver doc: ${receiverDoc.data?.keys}")
@@ -252,7 +252,8 @@ class CallManager {
         senderName: String,
         callType: String,
         senderId: String,
-        roomId: String
+        roomId: String,
+        receiverId: String
     ) {
         if (fcmToken.isEmpty() || senderName.isEmpty() || senderId.isEmpty() || roomId.isEmpty()) {
             Log.e("CallManager", "Invalid parameters for HTTP notification")
@@ -270,6 +271,7 @@ class CallManager {
                 put("sender_id", senderId)
                 put("sender_name", senderName)
                 put("room_id", roomId)
+                put("receiver_id",receiverId)
             })
         }
 
@@ -516,7 +518,9 @@ class CallManager {
         userId: String,
         onRoomJoined: (roomId: String, token: String) -> Unit,
         onError: (String) -> Unit
+
     ) {
+
         if (roomId.isEmpty() || userId.isEmpty()) {
             onError("Invalid room ID or user ID")
             return
@@ -642,9 +646,13 @@ class CallManager {
                                 callRoomRef.updateChildren(updates)
                                     .addOnSuccessListener {
                                         Log.d("CallManager", "Room marked as ended: $roomId")
-                                        sendCallEndedNotification(roomId, userId, callRoom.participants)
+                                        val receiverId = callRoom.participants.firstOrNull { it != userId }
+                                        if (receiverId != null) {
+                                            sendCallEndedNotification(roomId, receiverId, userId, callRoom.participants)
+                                        } else {
+                                            Log.e("CallManager", "No valid receiverId found to send call ended notification")
+                                        }
 
-                                        // Clean up the room after delay
                                         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                                             callRoomRef.removeValue()
                                         }, 10000) // 10 seconds delay
@@ -673,7 +681,7 @@ class CallManager {
         }
     }
 
-    private fun sendCallEndedNotification(roomId: String, userId: String, originalParticipants: List<String>) {
+    private fun sendCallEndedNotification(roomId: String,  receiverId:String, userId: String, originalParticipants: List<String>) {
         if (roomId.isEmpty() || userId.isEmpty()) {
             Log.e("CallManager", "Invalid parameters for call ended notification")
             return
@@ -695,6 +703,7 @@ class CallManager {
                                 put("data", JSONObject().apply {
                                     put("call_type", "call_ended")
                                     put("room_id", roomId)
+                                    put("receiver_id",receiverId)
                                 })
                             }
 

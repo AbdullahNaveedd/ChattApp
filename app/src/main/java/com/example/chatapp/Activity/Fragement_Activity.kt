@@ -18,7 +18,6 @@ class Fragement_Activity : AppCompatActivity() {
 
     private var interstitialAd: InterstitialAd? = null
 
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
@@ -31,26 +30,39 @@ class Fragement_Activity : AppCompatActivity() {
             val receiverId = intent.getStringExtra("receiver_id")
             val roomId = intent.getStringExtra("room_id")
             val isCallInitiator = intent.getBooleanExtra("isCallInitiator", false)
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+            Log.d("FragmentActivity", "Call Fragment Info:")
+            Log.d("FragmentActivity", "CallType: $callType")
+            Log.d("FragmentActivity", "SenderId: $senderId")
+            Log.d("FragmentActivity", "ReceiverId: $receiverId")
+            Log.d("FragmentActivity", "RoomId: $roomId")
+            Log.d("FragmentActivity", "IsCallInitiator: $isCallInitiator")
+            Log.d("FragmentActivity", "CurrentUserId: $currentUserId")
 
             val bundle = Bundle().apply {
-                putString("callType", callType)
                 putString("senderId", senderId)
                 putString("receiverId", receiverId)
                 putString("roomId", roomId)
                 putBoolean("isCallInitiator", isCallInitiator)
             }
 
-            val fragment = VoiceCall().apply {
-                arguments = bundle
+            val fragment = when (callType) {
+                "video" -> Videocall().apply { arguments = bundle }
+                else -> VoiceCall().apply { arguments = bundle }
             }
 
             supportFragmentManager.beginTransaction()
                 .replace(R.id.fragment_container_view, fragment)
                 .commit()
+        } else {
+            // Show default home fragment if no call fragment is requested
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container_view, Home())
+                .commit()
         }
 
         MobileAds.initialize(this) {}
-
 
         val adRequest = AdRequest.Builder().build()
         InterstitialAd.load(this,
@@ -67,8 +79,5 @@ class Fragement_Activity : AppCompatActivity() {
                     Log.e("AdLog", "Ad failed to load: ${error.message}")
                 }
             })
-
-
-
     }
 }

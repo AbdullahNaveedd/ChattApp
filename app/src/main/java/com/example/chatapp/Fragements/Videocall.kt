@@ -19,6 +19,14 @@ import com.example.chatapp.R
 import io.livekit.android.renderer.SurfaceViewRenderer
 import livekit.org.webrtc.EglBase
 import livekit.org.webrtc.RendererCommon
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import org.json.JSONObject
+import java.io.IOException
 
 class Videocall : Fragment() {
     private lateinit var videov: ImageView
@@ -104,23 +112,27 @@ class Videocall : Fragment() {
             return
         }
 
-        if (roomId != null) {
+        if (isCallInitiator) {
             updateCallStatus("Switching to video...")
-            callManager.joinExistingRoom(
-                roomId = roomId!!,
-                userId = senderId!!,
-                onRoomJoined = { receivedRoomId, token ->
-                    currentRoomId = receivedRoomId
-                    setupLiveKit(view, receivedRoomId, token)
+            callManager.initiateCall(
+                senderId = senderId!!,
+                receiverId = receiverId!!,
+                onRoomCreated = { roomId, token ->
+                    currentRoomId = roomId
+                    updateCallStatus("Calling $receiverId...")
+                    setupLiveKit(view, roomId, token)
                 },
                 onError = { error ->
                     Log.e("Videocall", "Error joining existing room: $error")
                     showErrorAndReturn("Connection failed: $error")
                 }
             )
-        } else {
-            updateCallStatus("Connecting...")
-            Log.d("Videocall", "Starting video call - Sender: $senderId, Receiver: $receiverId")
+        }  else {
+            if (currentRoomId == null) {
+                showErrorAndReturn("Invalid room ID for incoming call")
+                return
+            }
+            fetchTokenAndJoin(view, currentRoomId!!, senderId!!)
 
             callManager.initiateCall(
                 senderId = senderId!!,
@@ -143,6 +155,60 @@ class Videocall : Fragment() {
             )
         }
     }
+
+    private fun fetchTokenAndJoin(view: View, roomId: String, userId: String) {
+        updateCallStatus("Joining call...")
+
+        val client = okhttp3.OkHttpClient()
+        val json = org.json.JSONObject()
+        json.put("roomId", roomId)
+        json.put("userId", userId)
+
+        val mediaType = "application/json".toMediaType()
+        val body = json.toString().toRequestBody(mediaType)
+
+        val request = Request.Builder()
+            .url("http://192.168.106.145:3000/get-token")
+            .post(body)
+            .addHeader("Content-Type", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Log.e("VoiceCall", "Token fetch failed: ${e.message}")
+                requireActivity().runOnUiThread {
+                    showErrorAndReturn("Failed to fetch token")
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                Log.d("testingCallResponse","$response")
+                if (response.isSuccessful) {
+                    response.body?.string()?.let {
+                        try {
+                            val token = JSONObject(it).getString("token")
+                            requireActivity().runOnUiThread {
+                                setupLiveKit(view, roomId, token)
+                            }
+                        } catch (ex: Exception) {
+                            Log.e("VoiceCall", "Token parse error: ${ex.message}")
+                            requireActivity().runOnUiThread {
+                                showErrorAndReturn("Failed to parse token")
+                            }
+                        }
+                    } ?: requireActivity().runOnUiThread {
+                        showErrorAndReturn("Empty token response")
+                    }
+                } else {
+                    Log.e("VoiceCall", "Token request failed: ${response.message}")
+                    requireActivity().runOnUiThread {
+                        showErrorAndReturn("Token request failed")
+                    }
+                }
+            }
+        })
+    }
+
 
     private fun setupLiveKit(view: View, roomId: String, token: String) {
         try {

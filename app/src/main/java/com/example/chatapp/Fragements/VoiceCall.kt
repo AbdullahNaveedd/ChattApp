@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import com.example.chatapp.Call.CallManager
 import com.example.chatapp.LiveKt.LiveKitManager
 import com.example.chatapp.R
+import com.google.firebase.auth.FirebaseAuth
 import io.livekit.android.renderer.SurfaceViewRenderer
 import livekit.org.webrtc.EglBase
 import okhttp3.Call
@@ -40,16 +41,20 @@ class VoiceCall : Fragment() {
 
     private var senderId: String? = null
     private var receiverId: String? = null
+    private var currentUserId: String? = null
     private var isCallInitiator: Boolean = false
     private lateinit var liveKitManager: LiveKitManager
     private lateinit var callManager: CallManager
     private var currentRoomId: String? = null
     private var isCallActive = false
-    private var isIncomingCall: Boolean = false
-
+    private var hasParticipantJoined = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Get current user ID first
+        currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
         arguments?.let {
             senderId = it.getString("senderId")
             receiverId = it.getString("receiverId")
@@ -59,9 +64,9 @@ class VoiceCall : Fragment() {
             Log.d("VoiceCallDebug", "Arguments received:")
             Log.d("VoiceCallDebug", "senderId: $senderId")
             Log.d("VoiceCallDebug", "receiverId: $receiverId")
+            Log.d("VoiceCallDebug", "currentUserId: $currentUserId")
             Log.d("VoiceCallDebug", "roomId: $currentRoomId")
             Log.d("VoiceCallDebug", "isCallInitiator: $isCallInitiator")
-
 
             if (currentRoomId == null) {
                 Log.e("VoiceCallDebug", "Room ID is null!")
@@ -81,13 +86,15 @@ class VoiceCall : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-
         requestMicPermission()
         initializeViews(view)
         setupClickListeners()
 
-        receiverId?.let {
-            imgname.text = it
+        // Show the appropriate name based on role
+        if (isCallInitiator) {
+            imgname.text = receiverId ?: "Unknown"
+        } else {
+            imgname.text = senderId ?: "Unknown"
         }
 
         initiateOrJoinCall(view)
@@ -105,23 +112,28 @@ class VoiceCall : Fragment() {
     }
 
     private fun initiateOrJoinCall(view: View) {
+        if (currentUserId == null) {
+            showErrorAndReturn("User not authenticated")
+            return
+        }
+
         if (senderId == null || receiverId == null) {
             showErrorAndReturn("Invalid user IDs")
             return
         }
 
         updateCallStatus("Connecting...")
-        Log.d("VoiceCall", "Starting call - Sender: $senderId, Receiver: $receiverId")
+        Log.d("VoiceCall", "Starting call - CurrentUser: $currentUserId, Sender: $senderId, Receiver: $receiverId")
 
         if (isCallInitiator) {
+            // For call initiator, use their own ID as senderId
             callManager.initiateCall(
-
-                senderId = senderId!!,
+                senderId = currentUserId!!,
                 receiverId = receiverId!!,
                 onRoomCreated = { roomId, token ->
                     currentRoomId = roomId
                     updateCallStatus("Calling $receiverId...")
-                    setupLiveKit(view, roomId, token)
+                    setupLiveKit(view, roomId, token, currentUserId!!)
                 },
                 onError = { error ->
                     Log.e("VoiceCall", "Call initiation error: $error")
@@ -129,76 +141,36 @@ class VoiceCall : Fragment() {
                 }
             )
         } else {
+            // For receiver, join the existing room
             if (currentRoomId == null) {
                 showErrorAndReturn("Invalid room ID for incoming call")
                 return
             }
-            fetchTokenAndJoin(view, currentRoomId!!, senderId!!)
+            updateCallStatus("Joining call...")
+
+            // Use CallManager's joinExistingRoom method
+            callManager.joinExistingRoom(
+                roomId = currentRoomId!!,
+                userId = currentUserId!!,
+                onRoomJoined = { roomId, token ->
+                    Log.d("VoiceCall", "Successfully joined room: $roomId")
+                    setupLiveKit(view, roomId, token, currentUserId!!)
+                },
+                onError = { error ->
+                    Log.e("VoiceCall", "Failed to join room: $error")
+                    showErrorAndReturn("Failed to join call: $error")
+                }
+            )
         }
     }
 
-    private fun fetchTokenAndJoin(view: View, roomId: String, userId: String) {
-        updateCallStatus("Joining call...")
-
-        val client = okhttp3.OkHttpClient()
-        val json = org.json.JSONObject()
-        json.put("roomId", roomId)
-        json.put("userId", userId)
-
-        val mediaType = "application/json".toMediaType()
-        val body = json.toString().toRequestBody(mediaType)
-
-        val request = Request.Builder()
-            .url("http://192.168.106.145:3000/get-token")
-            .post(body)
-            .addHeader("Content-Type", "application/json")
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e("VoiceCall", "Token fetch failed: ${e.message}")
-                requireActivity().runOnUiThread {
-                    showErrorAndReturn("Failed to fetch token")
-                }
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                Log.d("testingCallResponse","$response")
-                if (response.isSuccessful) {
-                    response.body?.string()?.let {
-                        try {
-                            val token = JSONObject(it).getString("token")
-                            requireActivity().runOnUiThread {
-                                setupLiveKit(view, roomId, token)
-                            }
-                        } catch (ex: Exception) {
-                            Log.e("VoiceCall", "Token parse error: ${ex.message}")
-                            requireActivity().runOnUiThread {
-                                showErrorAndReturn("Failed to parse token")
-                            }
-                        }
-                    } ?: requireActivity().runOnUiThread {
-                        showErrorAndReturn("Empty token response")
-                    }
-                } else {
-                    Log.e("VoiceCall", "Token request failed: ${response.message}")
-                    requireActivity().runOnUiThread {
-                        showErrorAndReturn("Token request failed")
-                    }
-                }
-            }
-        })
-    }
-
-
-
-            private fun updateCallStatus(status: String) {
+    private fun updateCallStatus(status: String) {
         activity?.runOnUiThread {
             imgname.text = status
         }
     }
 
-    private fun setupLiveKit(view: View, roomId: String, token: String) {
+    private fun setupLiveKit(view: View, roomId: String, token: String, participantName: String) {
         try {
             val localRenderer = view.findViewById<SurfaceViewRenderer>(R.id.localRenderer)
             val remoteRenderer = view.findViewById<SurfaceViewRenderer>(R.id.remoteRenderer)
@@ -210,51 +182,79 @@ class VoiceCall : Fragment() {
             remoteRenderer.setMirror(false)
             remoteRenderer.visibility = View.GONE
 
+            Log.d("VoiceCall", "Setting up LiveKit with:")
+            Log.d("VoiceCall", "RoomId: $roomId")
+            Log.d("VoiceCall", "ParticipantName: $participantName")
+            Log.d("VoiceCall", "Token: ${token.take(20)}...")
+
             liveKitManager = LiveKitManager(
                 context = requireContext(),
                 serverUrl = "wss://chatapp-gubdfc71.livekit.cloud",
                 token = token,
                 roomName = roomId,
-                participantName = senderId ?: "user"
+                participantName = participantName // Use the correct participant name
             )
 
             liveKitManager.connect(
                 onConnected = {
                     activity?.runOnUiThread {
                         isCallActive = true
-                        updateCallStatus("Connected")
-                        liveKitManager.setRenderers(localRenderer, remoteRenderer)
+                        Log.d("VoiceCall", "Connected to room: $roomId as participant: $participantName")
 
+                        liveKitManager.setRenderers(localRenderer, remoteRenderer)
                         liveKitManager.enableAudio(true)
                         liveKitManager.enableVideo(false)
+
+                        // Show appropriate status based on role
+                        if (isCallInitiator) {
+                            if (hasParticipantJoined) {
+                                updateCallStatus("In call with $receiverId")
+                            } else {
+                                updateCallStatus("Waiting for $receiverId to join...")
+                            }
+                        } else {
+                            updateCallStatus("Connected to call with $senderId")
+                        }
 
                         Log.d("VoiceCall", "Voice call connected successfully")
                     }
                 },
                 onError = { error ->
                     activity?.runOnUiThread {
-                        Log.e("VoiceCall", "Connection error: $error")
+                        Log.e("VoiceCall", "LiveKit connection error: $error")
                         showErrorAndReturn("Connection failed: $error")
                     }
                 },
-                onParticipantJoined = { participantName ->
+                onParticipantJoined = { joinedParticipantName ->
                     activity?.runOnUiThread {
-                        Log.d("VoiceCall", "Participant joined: $participantName")
-                        // Update UI to show call is active
-                        if (participantName != senderId) {
-                            updateCallStatus("In call with $participantName")
+                        Log.d("VoiceCall", "Participant joined: $joinedParticipantName")
+
+                        // Only update status for the other participant (not self)
+                        if (joinedParticipantName != participantName) {
+                            hasParticipantJoined = true
+
+                            if (isCallInitiator) {
+                                // Caller sees "In call with [receiver]"
+                                updateCallStatus("In call with $receiverId")
+                            } else {
+                                // Receiver sees "In call with [caller]"
+                                updateCallStatus("In call with $senderId")
+                            }
+
+                            Log.d("VoiceCall", "Other participant joined, call is now active")
                         }
                     }
                 },
-                onParticipantLeft = { participantName ->
+                onParticipantLeft = { leftParticipantName ->
                     activity?.runOnUiThread {
-                        Log.d("VoiceCall", "Participant left: $participantName")
+                        Log.d("VoiceCall", "Participant left: $leftParticipantName")
 
                         // If the other participant left, end the call
-                        if (participantName != senderId) {
-                            updateCallStatus("$participantName left the call")
+                        if (leftParticipantName != participantName) {
+                            hasParticipantJoined = false
+                            updateCallStatus("$leftParticipantName left the call")
                             // Auto-end call after a delay
-                            view?.postDelayed({
+                            view.postDelayed({
                                 endCall()
                             }, 2000)
                         }
@@ -268,12 +268,20 @@ class VoiceCall : Fragment() {
     }
 
     private fun requestMicPermission() {
-        if (ContextCompat.checkSelfPermission(requireContext(), RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED) {
+        val permissions = arrayOf(
+            android.Manifest.permission.RECORD_AUDIO,
+            android.Manifest.permission.MODIFY_AUDIO_SETTINGS
+        )
+
+        val permissionsNeeded = permissions.filter {
+            ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
+        }
+
+        if (permissionsNeeded.isNotEmpty()) {
             ActivityCompat.requestPermissions(
                 requireActivity(),
-                arrayOf(RECORD_AUDIO),
-                1
+                permissionsNeeded.toTypedArray(),
+                123
             )
         }
     }
@@ -294,9 +302,9 @@ class VoiceCall : Fragment() {
         volumev.setOnClickListener {
             if (::liveKitManager.isInitialized && liveKitManager.isConnected()) {
                 try {
-                    val isMuted = liveKitManager.toggleSpeaker()
-                    volumev.setImageResource(if (isMuted) R.drawable.callredicon else R.drawable.volumev)
-                    Log.d("VoiceCall", if (isMuted) "Speaker Off" else "Speaker On")
+                    val isSpeakerOn = liveKitManager.toggleSpeaker()
+                    volumev.setImageResource(if (isSpeakerOn) R.drawable.volumev else R.drawable.callredicon)
+                    Log.d("VoiceCall", if (isSpeakerOn) "Speaker On" else "Speaker Off")
                 } catch (e: Exception) {
                     Log.e("VoiceCall", "Error toggling speaker", e)
                 }
@@ -347,7 +355,7 @@ class VoiceCall : Fragment() {
             }
 
             currentRoomId?.let { roomId ->
-                senderId?.let { userId ->
+                currentUserId?.let { userId ->
                     callManager.endCall(roomId, userId)
                 }
             }
@@ -362,7 +370,9 @@ class VoiceCall : Fragment() {
 
     private fun showErrorAndReturn(message: String) {
         Log.e("VoiceCall", message)
-        imgname.text = "Call Failed"
+        activity?.runOnUiThread {
+            imgname.text = "Call Failed"
+        }
         view?.postDelayed({
             replaceFragment(Home())
         }, 1500)
@@ -387,7 +397,7 @@ class VoiceCall : Fragment() {
 
             if (isCallActive) {
                 currentRoomId?.let { roomId ->
-                    senderId?.let { userId ->
+                    currentUserId?.let { userId ->
                         callManager.endCall(roomId, userId)
                     }
                 }

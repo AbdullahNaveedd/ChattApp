@@ -65,6 +65,9 @@ class LiveKitManager(
 
                 onConnected()
                 Log.d("LiveKit", "Connected to room: ${room.name} and ${room.localParticipant}")
+                Log.d("LiveKit", "Connecting to room with token: $token and server: $serverUrl")
+                Log.d("LiveKit", "AudioManager Mode: ${audioManager.mode}, Speakerphone ON: ${audioManager.isSpeakerphoneOn}")
+
             } catch (e: Exception) {
                 Log.e("LiveKit", "Connection failed", e)
                 onError(e.localizedMessage ?: "Connection failed")
@@ -75,18 +78,17 @@ class LiveKitManager(
     private fun createAndPublishAudioTrack() {
         scope.launch {
             try {
-                if (::room.isInitialized) {
-                    audioTrack = room.localParticipant.createAudioTrack()
-                    room.localParticipant.publishAudioTrack(audioTrack!!)
-                    room.localParticipant.setMicrophoneEnabled(true)
+                val audioTrack = room.localParticipant.createAudioTrack()
+                room.localParticipant.publishAudioTrack(audioTrack)
+                room.localParticipant.setMicrophoneEnabled(true)
 
-                    Log.d("LiveKit", "Audio track created and published successfully")
-                }
+                Log.d("LiveKit", "Audio track created and published successfully")
             } catch (e: Exception) {
                 Log.e("LiveKit", "Failed to create/publish audio track", e)
             }
         }
     }
+
 
     fun createAndPublishVideoTrack() {
         scope.launch {

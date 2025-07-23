@@ -11,6 +11,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.chatapp.Activity.MainActivity
 import com.example.chatapp.R
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -31,11 +32,21 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val senderId = remoteMessage.data["sender_id"]
             val senderName = remoteMessage.data["sender_name"]
             val roomId = remoteMessage.data["room_id"]
+            val receiverId = remoteMessage.data["receiver_id"]
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+
+            Log.d("FCM", "Room id is: $roomId")
+            Log.d("FCM", "Call type is: $callType")
+            Log.d("FCM", "Receiver ID from FCM: $receiverId")
+            Log.d("FCM", "Current device user ID: $currentUserId")
+
 
 
             when (callType) {
+
                 "incoming_call" -> {
-                    showIncomingCallNotification(senderId, senderName, roomId,callType)
+                    showIncomingCallNotification(senderId, senderName, roomId, callType)
                 }
                 "call_ended" -> {
                     cancelCallNotification()
@@ -51,7 +62,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         }
     }
 
-    private fun showIncomingCallNotification(senderId: String?, senderName: String?,callType: String?, roomId: String?) {
+    private fun showIncomingCallNotification(senderId: String?, senderName: String?, roomId: String?, callType: String?) {
         val channelId = "incoming_call_channel"
         val notificationId = 1001
         val context = this
@@ -78,7 +89,6 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             context, 1, declineIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-
         val notificationBuilder = NotificationCompat.Builder(this, channelId)
             .setSmallIcon(R.drawable.call)
             .setContentTitle("Incoming Call")
@@ -90,7 +100,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
             .setVibrate(longArrayOf(0, 1000, 500, 1000))
             .addAction(R.drawable.declinecall, "Decline", declinePendingIntent)
-            .addAction(R.drawable.acceptcall, "Accccccccept", acceptPendingIntent)
+            .addAction(R.drawable.acceptcall, "Accept", acceptPendingIntent)
             .setFullScreenIntent(acceptPendingIntent, true)
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
