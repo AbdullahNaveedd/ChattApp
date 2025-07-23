@@ -175,13 +175,27 @@ class UserChat : Fragment() {
                 currentUserId?.let { it1 -> NotificationTokenManager.saveTokenToFirestore(it1, token) }
             }
 
-            val fragment = Videocall().apply {
-                arguments = Bundle().apply {
-                    putString("senderId", currentUserId)
-                    putString("receiverId", currentReceiverId)
+            val callManager = CallManager()
+            callManager.initiateCall(
+                senderId = currentUserId!!,
+                receiverId = currentReceiverId!!,
+                onRoomCreated = { roomId, token ->
+                    val fragment = VoiceCall().apply {
+                        arguments = Bundle().apply {
+                            putString("senderId", currentUserId)
+                            putString("receiverId", currentReceiverId)
+                            putString("roomId", roomId)
+                            putBoolean("isCallInitiator", true)
+                            putBoolean("isIncomingCall", false) // initiator is not "incoming"
+                        }
+                    }
+                    navigateToFragment(fragment)
+                },
+                onError = { error ->
+                    Log.e("Video", "Error initiating call: $error")
+                    Toast.makeText(requireContext(), "Call failed: $error", Toast.LENGTH_SHORT).show()
                 }
-            }
-            navigateToFragment(fragment)
+            )
         }
 
         voicebtn.setOnClickListener {

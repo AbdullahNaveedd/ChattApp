@@ -29,7 +29,7 @@ class Videocall : Fragment() {
     private lateinit var micv: ImageView
     private lateinit var localRenderer: SurfaceViewRenderer
     private lateinit var remoteRenderer: SurfaceViewRenderer
-    private var statusText: TextView? = null // Add status text view if available
+    private var statusText: TextView? = null
 
     private var senderId: String? = null
     private var receiverId: String? = null
@@ -132,6 +132,7 @@ class Videocall : Fragment() {
         messagev = view.findViewById(R.id.messagev)
         cancelv = view.findViewById(R.id.cancel)
         micv = view.findViewById(R.id.micv)
+        statusText = view.findViewById(R.id.statusText)
         localRenderer = view.findViewById(R.id.localRenderer)
         remoteRenderer = view.findViewById(R.id.remoteRenderer)
 
@@ -154,7 +155,7 @@ class Videocall : Fragment() {
             remoteRenderer.visibility = View.VISIBLE
 
             try {
-                localRenderer.init(eglBase!!.eglBaseContext, null)
+                localRenderer.init(EglBase.create().eglBaseContext, null)
                 localRenderer.setMirror(true)
                 localRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
                 localRenderer.setEnableHardwareScaler(true)
@@ -283,7 +284,7 @@ class Videocall : Fragment() {
                     activity?.runOnUiThread {
                         isCallActive = true
                         Log.d("Videocall", "Connected to video room: $roomId as participant: $participantName")
-
+                        statusText?.visibility=View.GONE
                         liveKitManager.enableAudio(true)
 
                         view.postDelayed({

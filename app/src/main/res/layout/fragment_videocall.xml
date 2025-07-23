@@ -28,6 +28,19 @@
             android:visibility="visible" />
 
     </FrameLayout>
+    <TextView
+        android:id="@+id/statusText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Connecting..."
+        android:textSize="26sp"
+        android:textColor="@color/white"
+        android:layout_gravity="center"
+        app:layout_constraintBottom_toTopOf="@+id/videobtn"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="@dimen/_30sdp"
+        tools:ignore="MissingConstraints" />
 
 
 
