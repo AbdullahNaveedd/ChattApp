@@ -321,7 +321,7 @@ class VoiceCall : Fragment() {
 
         videov.setOnClickListener {
             if (::liveKitManager.isInitialized) {
-                liveKitManager.disconnect()
+                Log.d("VoiceCall", "Switching to video call with room: $currentRoomId")
             }
 
             val fragment = Videocall().apply {
@@ -330,11 +330,16 @@ class VoiceCall : Fragment() {
                     putString("receiverId", receiverId)
                     putString("roomId", currentRoomId)
                     putBoolean("isCallInitiator", isCallInitiator)
+                    putBoolean("isIncomingCall", false)
                 }
             }
+
+            if (::liveKitManager.isInitialized) {
+                liveKitManager.disconnect()
+            }
+
             replaceFragment(fragment)
         }
-
         messagev.setOnClickListener {
             val fragment = UserChat().apply {
                 arguments = Bundle().apply {

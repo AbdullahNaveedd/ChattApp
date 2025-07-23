@@ -10,23 +10,17 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.chatapp.Call.CallManager
 import com.example.chatapp.LiveKt.LiveKitManager
 import com.example.chatapp.R
+import com.google.firebase.auth.FirebaseAuth
 import io.livekit.android.renderer.SurfaceViewRenderer
 import livekit.org.webrtc.EglBase
 import livekit.org.webrtc.RendererCommon
-import okhttp3.Call
-import okhttp3.Callback
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.Response
-import org.json.JSONObject
-import java.io.IOException
 
 class Videocall : Fragment() {
     private lateinit var videov: ImageView
@@ -35,9 +29,11 @@ class Videocall : Fragment() {
     private lateinit var micv: ImageView
     private lateinit var localRenderer: SurfaceViewRenderer
     private lateinit var remoteRenderer: SurfaceViewRenderer
+    private var statusText: TextView? = null // Add status text view if available
 
     private var senderId: String? = null
     private var receiverId: String? = null
+    private var currentUserId: String? = null
     private var roomId: String? = null
     private var isCallInitiator: Boolean = false
     private lateinit var liveKitManager: LiveKitManager
@@ -47,8 +43,8 @@ class Videocall : Fragment() {
     private var isCameraEnabled = true
     private var isMicEnabled = true
     private var eglBase: EglBase? = null
-    private var isIncomingCall: Boolean = false
-
+    private var hasParticipantJoined = false
+    private var isRenderersInitialized = false
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 1001
@@ -56,13 +52,45 @@ class Videocall : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
         arguments?.let {
             senderId = it.getString("senderId")
             receiverId = it.getString("receiverId")
             roomId = it.getString("roomId")
             isCallInitiator = it.getBoolean("isCallInitiator", false)
-            isIncomingCall = it.getBoolean("isIncomingCall", false)
+            currentRoomId = it.getString("roomId")
+            val callType = it.getString("callType", "video")
 
+            Log.d("VideocallDebug", "Arguments received:")
+            Log.d("VideocallDebug", "senderId: $senderId")
+            Log.d("VideocallDebug", "receiverId: $receiverId")
+            Log.d("VideocallDebug", "currentUserId: $currentUserId")
+            Log.d("VideocallDebug", "roomId: $currentRoomId")
+            Log.d("VideocallDebug", "isCallInitiator: $isCallInitiator")
+            Log.d("VideocallDebug", "callType: $callType")
+
+            if (senderId == null || receiverId == null) {
+                Log.e("VideocallDebug", "Missing required parameters - senderId or receiverId is null")
+                return
+            }
+
+            if (currentUserId == null) {
+                Log.e("VideocallDebug", "Current user is not authenticated")
+                return
+            }
+
+            if (currentUserId != senderId && currentUserId != receiverId) {
+                Log.e("VideocallDebug", "Current user ID doesn't match sender or receiver")
+                return
+            }
+
+            if (currentRoomId == null) {
+                Log.e("VideocallDebug", "Room ID is null!")
+                isCallInitiator = true
+                Log.d("VideocallDebug", "Setting as call initiator due to null room ID")
+            }
         }
 
         callManager = CallManager()
@@ -85,7 +113,11 @@ class Videocall : Fragment() {
 
         initializeViews(view)
         setupClickListeners()
-        initiateOrJoinVideoCall(view)
+
+        // Add a small delay to ensure views are properly laid out
+        view.post {
+            initiateOrJoinVideoCall(view)
+        }
     }
 
     private fun hasRequiredPermissions(): Boolean {
@@ -103,170 +135,233 @@ class Videocall : Fragment() {
         localRenderer = view.findViewById(R.id.localRenderer)
         remoteRenderer = view.findViewById(R.id.remoteRenderer)
 
-        Log.d("Videocall", "Views initialized - Local renderer: ${::localRenderer.isInitialized}, Remote renderer: ${::remoteRenderer.isInitialized}")
+
+        Log.d("Videocall", "Views initialized")
+    }
+
+    private fun initializeRenderers() {
+        try {
+            if (isRenderersInitialized) {
+                Log.d("Videocall", "Renderers already initialized, skipping...")
+                return
+            }
+
+            if (eglBase == null) {
+                eglBase = EglBase.create()
+                Log.d("Videocall", "EglBase created")
+            }
+            localRenderer.visibility = View.VISIBLE
+            remoteRenderer.visibility = View.VISIBLE
+
+            try {
+                localRenderer.init(eglBase!!.eglBaseContext, null)
+                localRenderer.setMirror(true)
+                localRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
+                localRenderer.setEnableHardwareScaler(true)
+                Log.d("Videocall", "Local renderer initialized")
+            } catch (e: IllegalStateException) {
+                if (e.message?.contains("Already initialized") == true) {
+                    Log.w("Videocall", "Local renderer already initialized, continuing...")
+                } else {
+                    throw e
+                }
+            }
+
+            try {
+                remoteRenderer.init(eglBase!!.eglBaseContext, null)
+                remoteRenderer.setMirror(false)
+                remoteRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
+                remoteRenderer.setEnableHardwareScaler(true) // Enable hardware scaling
+                Log.d("Videocall", "Remote renderer initialized")
+            } catch (e: IllegalStateException) {
+                if (e.message?.contains("Already initialized") == true) {
+                    Log.w("Videocall", "Remote renderer already initialized, continuing...")
+                } else {
+                    throw e
+                }
+            }
+
+            isRenderersInitialized = true
+            Log.d("Videocall", "Both renderers initialized successfully")
+
+        } catch (e: Exception) {
+            Log.e("Videocall", "Error initializing renderers", e)
+            throw e
+        }
     }
 
     private fun initiateOrJoinVideoCall(view: View) {
+        if (currentUserId == null) {
+            showErrorAndReturn("User not authenticated")
+            return
+        }
+
         if (senderId == null || receiverId == null) {
             showErrorAndReturn("Invalid user IDs")
             return
         }
 
-        if (isCallInitiator) {
-            updateCallStatus("Switching to video...")
+        updateCallStatus("Connecting...")
+        Log.d("Videocall", "Starting video call - CurrentUser: $currentUserId, Sender: $senderId, Receiver: $receiverId")
+        Log.d("Videocall", "Room ID: $currentRoomId, IsCallInitiator: $isCallInitiator")
+
+        if (isCallInitiator || currentRoomId == null) {
+            updateCallStatus("Starting video call...")
+            Log.d("Videocall", "Creating new video call room")
+
             callManager.initiateCall(
-                senderId = senderId!!,
+                senderId = currentUserId!!,
                 receiverId = receiverId!!,
                 onRoomCreated = { roomId, token ->
                     currentRoomId = roomId
-                    updateCallStatus("Calling $receiverId...")
-                    setupLiveKit(view, roomId, token)
-                },
-                onError = { error ->
-                    Log.e("Videocall", "Error joining existing room: $error")
-                    showErrorAndReturn("Connection failed: $error")
-                }
-            )
-        }  else {
-            if (currentRoomId == null) {
-                showErrorAndReturn("Invalid room ID for incoming call")
-                return
-            }
-            fetchTokenAndJoin(view, currentRoomId!!, senderId!!)
-
-            callManager.initiateCall(
-                senderId = senderId!!,
-                receiverId = receiverId!!,
-                onRoomCreated = { newRoomId, token ->
-                    Log.d("Videocall", "Room created/joined: $newRoomId")
-                    currentRoomId = newRoomId
-
-                    if (isCallInitiator) {
-                        updateCallStatus("Video calling ${receiverId}...")
-                    } else {
-                        updateCallStatus("Joining video call...")
-                    }
-                    setupLiveKit(view, newRoomId, token)
+                    Log.d("Videocall", "New room created: $roomId")
+                    updateCallStatus("Video calling $receiverId...")
+                    setupLiveKit(view, roomId, token, currentUserId!!)
                 },
                 onError = { error ->
                     Log.e("Videocall", "Call initiation error: $error")
                     showErrorAndReturn("Connection failed: $error")
                 }
             )
+        } else {
+            updateCallStatus("Joining video call...")
+            Log.d("Videocall", "Joining existing video room: $currentRoomId")
+
+            callManager.joinExistingRoom(
+                roomId = currentRoomId!!,
+                userId = currentUserId!!,
+                onRoomJoined = { roomId, token ->
+                    Log.d("Videocall", "Successfully joined video room: $roomId")
+                    setupLiveKit(view, roomId, token, currentUserId!!)
+                },
+                onError = { error ->
+                    Log.e("Videocall", "Failed to join video room: $error")
+                    Log.d("Videocall", "Fallback: Creating new room instead")
+                    updateCallStatus("Creating new video call...")
+
+                    callManager.initiateCall(
+                        senderId = currentUserId!!,
+                        receiverId = receiverId!!,
+                        onRoomCreated = { newRoomId, token ->
+                            currentRoomId = newRoomId
+                            Log.d("Videocall", "Fallback room created: $newRoomId")
+                            updateCallStatus("Video calling $receiverId...")
+                            setupLiveKit(view, newRoomId, token, currentUserId!!)
+                        },
+                        onError = { fallbackError ->
+                            Log.e("Videocall", "Fallback call creation failed: $fallbackError")
+                            showErrorAndReturn("Failed to start video call: $fallbackError")
+                        }
+                    )
+                }
+            )
         }
     }
 
-    private fun fetchTokenAndJoin(view: View, roomId: String, userId: String) {
-        updateCallStatus("Joining call...")
-
-        val client = okhttp3.OkHttpClient()
-        val json = org.json.JSONObject()
-        json.put("roomId", roomId)
-        json.put("userId", userId)
-
-        val mediaType = "application/json".toMediaType()
-        val body = json.toString().toRequestBody(mediaType)
-
-        val request = Request.Builder()
-            .url("http://192.168.106.145:3000/get-token")
-            .post(body)
-            .addHeader("Content-Type", "application/json")
-            .build()
-
-        client.newCall(request).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                Log.e("VoiceCall", "Token fetch failed: ${e.message}")
-                requireActivity().runOnUiThread {
-                    showErrorAndReturn("Failed to fetch token")
-                }
-            }
-
-            override fun onResponse(call: Call, response: Response) {
-                Log.d("testingCallResponse","$response")
-                if (response.isSuccessful) {
-                    response.body?.string()?.let {
-                        try {
-                            val token = JSONObject(it).getString("token")
-                            requireActivity().runOnUiThread {
-                                setupLiveKit(view, roomId, token)
-                            }
-                        } catch (ex: Exception) {
-                            Log.e("VoiceCall", "Token parse error: ${ex.message}")
-                            requireActivity().runOnUiThread {
-                                showErrorAndReturn("Failed to parse token")
-                            }
-                        }
-                    } ?: requireActivity().runOnUiThread {
-                        showErrorAndReturn("Empty token response")
-                    }
-                } else {
-                    Log.e("VoiceCall", "Token request failed: ${response.message}")
-                    requireActivity().runOnUiThread {
-                        showErrorAndReturn("Token request failed")
-                    }
-                }
-            }
-        })
-    }
-
-
-    private fun setupLiveKit(view: View, roomId: String, token: String) {
+    private fun setupLiveKit(view: View, roomId: String, token: String, participantName: String) {
         try {
+            // Initialize renderers first
+            initializeRenderers()
+
+            Log.d("Videocall", "Setting up LiveKit with:")
+            Log.d("Videocall", "RoomId: $roomId")
+            Log.d("Videocall", "ParticipantName: $participantName")
+            Log.d("Videocall", "Token: ${token.take(20)}...")
+
             liveKitManager = LiveKitManager(
                 context = requireContext(),
                 serverUrl = "wss://chatapp-gubdfc71.livekit.cloud",
                 token = token,
                 roomName = roomId,
-                participantName = senderId ?: "user"
+                participantName = participantName
             )
-            liveKitManager.setRenderers(localRenderer, remoteRenderer)
 
+            liveKitManager.setRenderers(localRenderer, remoteRenderer)
 
             liveKitManager.connect(
                 onConnected = {
                     activity?.runOnUiThread {
                         isCallActive = true
-                        updateCallStatus("Video call connected")
+                        Log.d("Videocall", "Connected to video room: $roomId as participant: $participantName")
 
                         liveKitManager.enableAudio(true)
-                        liveKitManager.enableVideo(true)
+
+                        view.postDelayed({
+                            try {
+                                liveKitManager.enableVideo(true)
+                                isCameraEnabled = true
+                                localRenderer.visibility = View.VISIBLE
+
+                                Log.d("LiveKit", "Video enabled successfully")
+                            } catch (e: Exception) {
+                                Log.e("LiveKit", "Error enabling video", e)
+                            }
+                        }, 500)
+
                         isMicEnabled = true
-                        isCameraEnabled = true
-                        liveKitManager.enableVideo(isCameraEnabled)
-                        localRenderer.visibility=View.VISIBLE
                         updateButtonStates()
+
+                        if (isCallInitiator) {
+                            if (hasParticipantJoined) {
+                                updateCallStatus("Video call with $receiverId")
+                            } else {
+                                updateCallStatus("Waiting for $receiverId to join...")
+                            }
+                        } else {
+                            updateCallStatus("Connected to video call with $senderId")
+                        }
 
                         Log.d("Videocall", "Video call connected successfully")
                     }
                 },
                 onError = { error ->
                     activity?.runOnUiThread {
+                        Log.e("Videocall", "LiveKit connection error: $error")
                         showErrorAndReturn("Connection failed: $error")
                     }
                 },
-                onParticipantJoined = { participantName ->
+                onParticipantJoined = { joinedParticipantName ->
                     activity?.runOnUiThread {
-                        updateCallStatus("In video call with $participantName")
+                        Log.d("Videocall", "Participant joined: $joinedParticipantName")
+
+                        if (joinedParticipantName != participantName) {
+                            hasParticipantJoined = true
+                            remoteRenderer.visibility = View.VISIBLE
+
+                            if (isCallInitiator) {
+                                updateCallStatus("Video call with $receiverId")
+                            } else {
+                                updateCallStatus("Video call with $senderId")
+                            }
+
+                            Log.d("Videocall", "Other participant joined, video call is now active")
+                        }
                     }
                 },
-                onParticipantLeft = { participantName ->
+                onParticipantLeft = { leftParticipantName ->
                     activity?.runOnUiThread {
-                        updateCallStatus("$participantName left the call")
-                        view.postDelayed({
-                            endCall()
-                        }, 2000)
+                        Log.d("Videocall", "Participant left: $leftParticipantName")
+
+                        if (leftParticipantName != participantName) {
+                            hasParticipantJoined = false
+                            updateCallStatus("$leftParticipantName left the video call")
+                            view.postDelayed({
+                                endCall()
+                            }, 2000)
+                        }
                     }
                 }
             )
         } catch (e: Exception) {
             Log.e("Videocall", "Error setting up LiveKit", e)
-            showErrorAndReturn("Failed to setup call: ${e.message}")
+            showErrorAndReturn("Failed to setup video call: ${e.message}")
         }
     }
 
     private fun updateCallStatus(status: String) {
         activity?.runOnUiThread {
             Log.d("Videocall", "Status: $status")
+            statusText?.text = status
         }
     }
 
@@ -288,7 +383,7 @@ class Videocall : Fragment() {
                 try {
                     isCameraEnabled = !isCameraEnabled
                     liveKitManager.enableVideo(isCameraEnabled)
-                    localRenderer.visibility= if(isCameraEnabled) View.VISIBLE else View.GONE
+                    localRenderer.visibility = if(isCameraEnabled) View.VISIBLE else View.GONE
                     updateButtonStates()
                     Log.d("Videocall", if (isCameraEnabled) "Camera Enabled" else "Camera Disabled")
                 } catch (e: Exception) {
@@ -346,7 +441,10 @@ class Videocall : Fragment() {
                 view?.let {
                     initializeViews(it)
                     setupClickListeners()
-                    initiateOrJoinVideoCall(it)
+                    // Add delay here too
+                    it.post {
+                        initiateOrJoinVideoCall(it)
+                    }
                 }
             } else {
                 showErrorAndReturn("Camera and microphone permissions are required for video calls")
@@ -363,7 +461,7 @@ class Videocall : Fragment() {
             }
 
             currentRoomId?.let { roomId ->
-                senderId?.let { userId ->
+                currentUserId?.let { userId ->
                     callManager.endCall(roomId, userId)
                 }
             }
@@ -379,6 +477,7 @@ class Videocall : Fragment() {
     private fun showErrorAndReturn(message: String) {
         Log.e("Videocall", message)
         activity?.runOnUiThread {
+            updateCallStatus("Error: $message")
         }
         view?.postDelayed({
             replaceFragment(Home())
@@ -404,34 +503,57 @@ class Videocall : Fragment() {
 
             if (isCallActive) {
                 currentRoomId?.let { roomId ->
-                    senderId?.let { userId ->
+                    currentUserId?.let { userId ->
                         callManager.endCall(roomId, userId)
                     }
                 }
             }
 
-            try {
-                if (::localRenderer.isInitialized) {
-                    localRenderer.release()
-                }
-            } catch (e: Exception) {
-                Log.e("Videocall", "Error releasing local renderer", e)
-            }
-
-            try {
-                if (::remoteRenderer.isInitialized) {
-                    remoteRenderer.release()
-                }
-            } catch (e: Exception) {
-                Log.e("Videocall", "Error releasing remote renderer", e)
-            }
-
-            eglBase?.release()
-            eglBase = null
+            // Clean up renderers safely
+            cleanupRenderers()
 
         } catch (e: Exception) {
             Log.e("Videocall", "Error in onDestroy", e)
         }
     }
 
+    private fun cleanupRenderers() {
+        try {
+            if (::localRenderer.isInitialized) {
+                localRenderer.release()
+                Log.d("Videocall", "Local renderer released")
+            }
+        } catch (e: Exception) {
+            Log.e("Videocall", "Error releasing local renderer", e)
+        }
+
+        try {
+            if (::remoteRenderer.isInitialized) {
+                remoteRenderer.release()
+                Log.d("Videocall", "Remote renderer released")
+            }
+        } catch (e: Exception) {
+            Log.e("Videocall", "Error releasing remote renderer", e)
+        }
+
+        try {
+            eglBase?.release()
+            eglBase = null
+            Log.d("Videocall", "EglBase released")
+        } catch (e: Exception) {
+            Log.e("Videocall", "Error releasing EglBase", e)
+        }
+
+        isRenderersInitialized = false
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Log.d("Videocall", "Fragment paused")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d("Videocall", "Fragment resumed")
+    }
 }

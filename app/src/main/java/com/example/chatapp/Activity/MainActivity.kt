@@ -88,22 +88,22 @@ class MainActivity : AppCompatActivity() {
     private fun handleAcceptCall(intent: Intent) {
         Log.d("CallFlow", "handleAcceptCall() triggered")
 
-
         val originalSenderId = intent.getStringExtra("sender_id")
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
         val roomId = intent.getStringExtra("room_id")
         val callType = intent.getStringExtra("call_type") ?: "voice"
 
         Log.d("CallFlow", "roomId: $roomId, currentUserId: $currentUserId, senderId: $originalSenderId")
+        Log.d("CallFlow", "callType: $callType")
 
-
-        Log.d("Roooms","Room id exist $roomId")
-        if (roomId != null && currentUserId != null) {
+        if (roomId != null && currentUserId != null && originalSenderId != null) {
             val callRef = FirebaseDatabase.getInstance().reference.child("calls").child(roomId)
 
             callRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val participantsList = snapshot.child("participants").children.mapNotNull { it.getValue(String::class.java) }.toMutableList()
+                    val participantsList = snapshot.child("participants").children.mapNotNull {
+                        it.getValue(String::class.java)
+                    }.toMutableList()
 
                     if (!participantsList.contains(currentUserId)) {
                         participantsList.add(currentUserId)
@@ -114,7 +114,7 @@ class MainActivity : AppCompatActivity() {
                             }
                             .addOnFailureListener { e ->
                                 Log.e("RealtimeDB", "Failed to update participants: ${e.message}")
-                                launchCallScreen(originalSenderId, currentUserId, roomId, callType) // still launch fallback
+                                launchCallScreen(originalSenderId, currentUserId, roomId, callType)
                             }
                     } else {
                         launchCallScreen(originalSenderId, currentUserId, roomId, callType)
@@ -127,17 +127,21 @@ class MainActivity : AppCompatActivity() {
                 }
             })
         } else {
-            Log.e("Call", "Missing roomId or currentUserId")
+            Log.e("Call", "Missing required parameters - roomId: $roomId, currentUserId: $currentUserId, senderId: $originalSenderId")
         }
     }
+
     private fun launchCallScreen(senderId: String?, receiverId: String, roomId: String, callType: String) {
+        Log.d("CallFlow", "Launching call screen with:")
+        Log.d("CallFlow", "senderId: $senderId, receiverId: $receiverId, roomId: $roomId, callType: $callType")
+
         val callIntent = Intent(this, Fragement_Activity::class.java).apply {
             putExtra("show_call_fragment", true)
-            putExtra("call_fragment_type", callType)
-            putExtra("sender_id", senderId)
-            putExtra("receiver_id", receiverId)
+            putExtra("call_fragment_type", callType) // Make sure this matches the type from notification
+            putExtra("sender_id", senderId) // Original caller
+            putExtra("receiver_id", receiverId) // Current user (call receiver)
             putExtra("room_id", roomId)
-            putExtra("isCallInitiator", false)
+            putExtra("isCallInitiator", false) // Current user is receiving the call
         }
         startActivity(callIntent)
         finish()
@@ -150,7 +154,6 @@ class MainActivity : AppCompatActivity() {
         val senderId = intent.getStringExtra("sender_id")
         val roomId = intent.getStringExtra("room_id")
         Log.d(TAG, "Declining call from $senderId")
-
 
         val intent = Intent(this, Fragement_Activity::class.java)
         startActivity(intent)

@@ -52,7 +52,6 @@ class CallManager {
             val callRoomRef = database.child("calls").child(roomId)
             Log.d("CallManager", "Initiating call - Room: $roomId, Sender: $senderId, Receiver: $receiverId")
 
-            // Check if there's an active call between these users
             callRoomRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     try {
