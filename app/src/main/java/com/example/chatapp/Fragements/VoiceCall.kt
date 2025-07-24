@@ -331,6 +331,7 @@ class VoiceCall : Fragment() {
                     putString("roomId", currentRoomId)
                     putBoolean("isCallInitiator", isCallInitiator)
                     putBoolean("isIncomingCall", false)
+                    putBoolean("isSwitchingFromVoice", true)
                 }
             }
 

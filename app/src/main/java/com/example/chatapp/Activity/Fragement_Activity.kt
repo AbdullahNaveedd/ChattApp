@@ -68,10 +68,10 @@ class Fragement_Activity : AppCompatActivity() {
             }
 
             val fragment = when (callType) {
-                "video" -> {
-                    Log.d("FragmentActivity", "Creating Videocall fragment")
-                    Videocall().apply { arguments = bundle }
-                }
+//                "video" -> {
+//                    Log.d("FragmentActivity", "Creating Videocall fragment")
+//                    Videocall().apply { arguments = bundle }
+//                }
                 "voice" -> {
                     Log.d("FragmentActivity", "Creating VoiceCall fragment")
                     VoiceCall().apply { arguments = bundle }

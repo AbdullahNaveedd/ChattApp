@@ -35,17 +35,15 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             val receiverId = remoteMessage.data["receiver_id"]
             val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
-
             Log.d("FCM", "Room id is: $roomId")
             Log.d("FCM", "Call type is: $callType")
             Log.d("FCM", "Receiver ID from FCM: $receiverId")
             Log.d("FCM", "Current device user ID: $currentUserId")
 
-
-
             when (callType) {
-
                 "incoming_call" -> {
+                    // Always show the incoming call notification with accept/decline actions
+                    // regardless of app state (foreground/background)
                     showIncomingCallNotification(senderId, senderName, roomId, callType)
                 }
                 "call_ended" -> {
@@ -56,10 +54,21 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             }
         }
 
+        // Only show simple notification for regular messages, not for calls
         remoteMessage.notification?.let {
             Log.d("FCM", "Message Notification Body: ${it.body}")
-            sendNotification(it.body ?: "New message")
+            // Check if this is not a call-related notification
+            val callType = remoteMessage.data["call_type"]
+            if (callType == null || callType.isEmpty()) {
+                sendNotification(it.body ?: "New message")
+            }
         }
+    }
+
+    private fun isAppInForeground(): Boolean {
+        // You can implement this method to check if app is in foreground
+        // For now, we'll always show the call notification with actions
+        return false
     }
 
     private fun showIncomingCallNotification(senderId: String?, senderName: String?, roomId: String?, callType: String?) {
@@ -67,6 +76,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val notificationId = 1001
         val context = this
 
+        // Create intent to open the app when notification is tapped
+        val openAppIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("room_id", roomId)
+            putExtra("call_type", callType)
+            putExtra("sender_id", senderId)
+            putExtra("sender_name", senderName)
+                .putExtra("action", "incoming_call")
+        }
+        val openAppPendingIntent = PendingIntent.getActivity(
+            context, 2, openAppIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Accept call intent
         val acceptIntent = Intent(context, CallActionReceiver::class.java).apply {
             action = "ACTION_ACCEPT_CALL"
             putExtra("room_id", roomId)
@@ -78,6 +101,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             context, 0, acceptIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        // Decline call intent
         val declineIntent = Intent(context, CallActionReceiver::class.java).apply {
             action = "ACTION_DECLINE_CALL"
             putExtra("room_id", roomId)
@@ -93,7 +117,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setSmallIcon(R.drawable.call)
             .setContentTitle("Incoming Call")
             .setContentText("$senderName is calling...")
-            .setAutoCancel(true)
+            .setAutoCancel(false)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
@@ -101,6 +125,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setVibrate(longArrayOf(0, 1000, 500, 1000))
             .addAction(R.drawable.declinecall, "Decline", declinePendingIntent)
             .addAction(R.drawable.acceptcall, "Accept", acceptPendingIntent)
+            .setContentIntent(openAppPendingIntent) // This handles the tap on notification body
             .setFullScreenIntent(acceptPendingIntent, true)
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -115,6 +140,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 1000, 500, 1000)
                 setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE), null)
+                setShowBadge(true)
+                lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
             }
             notificationManager.createNotificationChannel(channel)
         }

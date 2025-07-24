@@ -104,6 +104,8 @@ class UserChat : Fragment() {
         setupCameraLauncher()
 
         initializeCurrentUser()
+
+        videobtn.visibility=View.GONE
     }
 
     private fun initializeCurrentUser() {
@@ -501,7 +503,10 @@ class UserChat : Fragment() {
         val chatRef = db.collection("Chats").document(currentChatId!!)
         chatRef.update("isReadStatus.${receiverId}", false)
 
-        Log.d("UserChat", "Sending message from $currentUserId to $receiverId in chat $currentChatId")
+        Log.d(
+            "UserChat",
+            "Sending message from $currentUserId to $receiverId in chat $currentChatId"
+        )
         Log.d("UserChat", "Message data: $messageData")
 
         // Add message to subcollection
@@ -570,13 +575,20 @@ class UserChat : Fragment() {
                         val messageTypeString = doc.getString("messageType") ?: "TEXT"
                         val mediaUrl = doc.getString("mediaUrl")
 
-                        Log.d("UserChat", "Processing message - SenderId: $senderId, MessageType: $messageTypeString, MediaUrl: $mediaUrl")
+                        Log.d(
+                            "UserChat",
+                            "Processing message - SenderId: $senderId, MessageType: $messageTypeString, MediaUrl: $mediaUrl"
+                        )
 
                         if ((senderId == currentUserId && receiverId == currentReceiverId) ||
-                            (senderId == currentReceiverId && receiverId == currentUserId)) {
+                            (senderId == currentReceiverId && receiverId == currentUserId)
+                        ) {
 
                             val time = if (timestamp != null) {
-                                SimpleDateFormat("hh:mm a", Locale.getDefault()).format(timestamp.toDate())
+                                SimpleDateFormat(
+                                    "hh:mm a",
+                                    Locale.getDefault()
+                                ).format(timestamp.toDate())
                             } else {
                                 SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())
                             }
@@ -617,7 +629,10 @@ class UserChat : Fragment() {
                             )
 
                             userChatList.add(messageObj)
-                            Log.d("UserChat", "Added message: Type=${messageType}, IsSent=${isSentMessage}, MediaUrl=${mediaUrl}")
+                            Log.d(
+                                "UserChat",
+                                "Added message: Type=${messageType}, IsSent=${isSentMessage}, MediaUrl=${mediaUrl}"
+                            )
                         }
                     } catch (e: Exception) {
                         Log.e("UserChat", "Error processing message document", e)
@@ -631,34 +646,36 @@ class UserChat : Fragment() {
                 }
             }
     }
+
     private fun setupCameraLauncher() {
-        camLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val data = result.data
-                val receiverId = currentReceiverId ?: return@registerForActivityResult
+        camLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == RESULT_OK) {
+                    val data = result.data
+                    val receiverId = currentReceiverId ?: return@registerForActivityResult
 
-                val selectedImageUri: Uri? = data?.data
-                var finalUri: Uri? = selectedImageUri
+                    val selectedImageUri: Uri? = data?.data
+                    var finalUri: Uri? = selectedImageUri
 
-                // If taken from camera, convert bitmap to Uri
-                if (finalUri == null) {
-                    val bitmap = data?.extras?.get("data") as? Bitmap
-                    if (bitmap != null) {
-                        val path = MediaStore.Images.Media.insertImage(
-                            requireContext().contentResolver,
-                            bitmap,
-                            "IMG_${System.currentTimeMillis()}",
-                            null
-                        )
-                        finalUri = Uri.parse(path)
+                    // If taken from camera, convert bitmap to Uri
+                    if (finalUri == null) {
+                        val bitmap = data?.extras?.get("data") as? Bitmap
+                        if (bitmap != null) {
+                            val path = MediaStore.Images.Media.insertImage(
+                                requireContext().contentResolver,
+                                bitmap,
+                                "IMG_${System.currentTimeMillis()}",
+                                null
+                            )
+                            finalUri = Uri.parse(path)
+                        }
+                    }
+
+                    finalUri?.let { uri ->
+                        handleSelectedImage(uri, receiverId)
                     }
                 }
-
-                finalUri?.let { uri ->
-                    handleSelectedImage(uri, receiverId)
-                }
             }
-        }
     }
 
     private fun openImagePicker() {
@@ -671,7 +688,8 @@ class UserChat : Fragment() {
 
     private fun handleVoiceRecording() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED) {
+            != PackageManager.PERMISSION_GRANTED
+        ) {
             ActivityCompat.requestPermissions(
                 requireActivity(),
                 arrayOf(Manifest.permission.RECORD_AUDIO),
@@ -683,7 +701,8 @@ class UserChat : Fragment() {
     }
 
     private fun startRecording() {
-        val audioFile = File(requireContext().externalCacheDir, "voice_${System.currentTimeMillis()}.3gp")
+        val audioFile =
+            File(requireContext().externalCacheDir, "voice_${System.currentTimeMillis()}.3gp")
         audioFilePath = audioFile.absolutePath
 
         mediaRecorder = MediaRecorder().apply {
@@ -698,6 +717,7 @@ class UserChat : Fragment() {
         isRecording = true
         Toast.makeText(requireContext(), "Recording started...", Toast.LENGTH_SHORT).show()
     }
+
     suspend fun uploadVoiceToCloudinary(file: File): String? =
         suspendCancellableCoroutine { cont ->
 
@@ -713,35 +733,40 @@ class UserChat : Fragment() {
                 context?.let { MediaManager.init(it.applicationContext, config) }
             }
             try {
-            MediaManager.get().upload(file.absolutePath)
-                .unsigned("chatapp_preset")
-                .option("resource_type", "video") // ⬅ important for .3gp
-                .callback(object : UploadCallback {
-                    override fun onStart(requestId: String?) {}
+                MediaManager.get().upload(file.absolutePath)
+                    .unsigned("chatapp_preset")
+                    .option("resource_type", "video") // ⬅ important for .3gp
+                    .callback(object : UploadCallback {
+                        override fun onStart(requestId: String?) {}
 
-                    override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
+                        override fun onProgress(
+                            requestId: String?,
+                            bytes: Long,
+                            totalBytes: Long
+                        ) {
+                        }
 
-                    override fun onSuccess(requestId: String?, resultData: Map<*, *>) {
-                        val url = resultData["secure_url"] as? String
-                        Log.d("Cloudinary", "Voice uploaded: $url")
-                        cont.resume(url, null)
-                    }
+                        override fun onSuccess(requestId: String?, resultData: Map<*, *>) {
+                            val url = resultData["secure_url"] as? String
+                            Log.d("Cloudinary", "Voice uploaded: $url")
+                            cont.resume(url, null)
+                        }
 
-                    override fun onError(requestId: String?, error: ErrorInfo?) {
-                        Log.e("Cloudinary", "Upload error: ${error?.description}")
-                        cont.resume(null, null)
-                    }
+                        override fun onError(requestId: String?, error: ErrorInfo?) {
+                            Log.e("Cloudinary", "Upload error: ${error?.description}")
+                            cont.resume(null, null)
+                        }
 
-                    override fun onReschedule(requestId: String?, error: ErrorInfo?) {
-                        cont.resume(null, null)
-                    }
+                        override fun onReschedule(requestId: String?, error: ErrorInfo?) {
+                            cont.resume(null, null)
+                        }
 
-                }).dispatch()
-        } catch (e: Exception) {
-            Log.e("Cloudinary", "Upload exception", e)
-            cont.resume(null, null)
+                    }).dispatch()
+            } catch (e: Exception) {
+                Log.e("Cloudinary", "Upload exception", e)
+                cont.resume(null, null)
+            }
         }
-    }
 
     private fun stopRecording() {
         try {
@@ -800,6 +825,7 @@ class UserChat : Fragment() {
             Log.e("Recorder", "Stop failed: ${e.message}", e)
         }
     }
+
     companion object {
         fun newInstance(name: String, image: String, receiverId: String): UserChat {
             val fragment = UserChat()

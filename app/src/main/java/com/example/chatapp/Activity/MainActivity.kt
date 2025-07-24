@@ -147,9 +147,6 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
-
-
-
     private fun handleDeclineCall(intent: Intent) {
         val senderId = intent.getStringExtra("sender_id")
         val roomId = intent.getStringExtra("room_id")
