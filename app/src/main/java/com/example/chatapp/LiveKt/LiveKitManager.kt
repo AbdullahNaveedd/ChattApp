@@ -59,7 +59,6 @@ class LiveKitManager(
                 initializeRenderersWithRoom()
 
                 createAndPublishAudioTrack()
-                createAndPublishVideoTrack()
 
                 observeRoomEvents(onParticipantJoined, onParticipantLeft)
 
@@ -261,26 +260,58 @@ class LiveKitManager(
     fun enableVideo(enable: Boolean) {
         scope.launch {
             try {
+                Log.d("LiveKit", "enableVideo called with enable=$enable")
+                Log.d("LiveKit", "Room initialized: ${::room.isInitialized}, Connected: $isRoomConnected")
+                Log.d("LiveKit", "Local renderer available: ${localRenderer != null}")
+
                 if (::room.isInitialized && isRoomConnected) {
                     if (enable) {
                         if (videoTrack == null) {
-                            createAndPublishVideoTrack()
+                            Log.d("LiveKit", "Creating new video track...")
+
+                            // Create video track
+                            videoTrack = room.localParticipant.createVideoTrack()
+                            Log.d("LiveKit", "Video track created: ${videoTrack != null}")
+
+                            // Publish video track
+                            room.localParticipant.publishVideoTrack(videoTrack!!)
+                            Log.d("LiveKit", "Video track published successfully")
+
+                            // Attach to local renderer
+                            localRenderer?.let { renderer ->
+                                try {
+                                    Log.d("LiveKit", "Attaching video track to local renderer...")
+                                    videoTrack?.addRenderer(renderer)
+                                    Log.d("LiveKit", "✅ Local video track attached to renderer successfully")
+                                } catch (e: Exception) {
+                                    Log.e("LiveKit", "❌ Error attaching local renderer to track", e)
+                                }
+                            } ?: Log.e("LiveKit", "❌ Local renderer is null!")
+
                         } else {
-                            room.localParticipant.setCameraEnabled(true)
-                            Log.d("LiveKit", "Video enabled via setCameraEnabled")
+                            Log.d("LiveKit", "Video track already exists, just enabling camera")
                         }
+
+                        // Enable camera
+                        room.localParticipant.setCameraEnabled(true)
+                        Log.d("LiveKit", "Camera enabled")
+
                     } else {
                         room.localParticipant.setCameraEnabled(false)
-                        Log.d("LiveKit", "Video disabled")
+                        Log.d("LiveKit", "Camera disabled")
                     }
+
                     isVideoEnabled = enable
+                    Log.d("LiveKit", "✅ Video ${if (enable) "enabled" else "disabled"} successfully")
+
+                } else {
+                    Log.e("LiveKit", "❌ Cannot enable video - Room not ready. Initialized: ${::room.isInitialized}, Connected: $isRoomConnected")
                 }
             } catch (e: Exception) {
-                Log.e("LiveKit", "Failed to toggle video", e)
+                Log.e("LiveKit", "❌ Failed to toggle video", e)
             }
         }
     }
-
     fun toggleVideo(): Boolean {
         val newState = !isVideoEnabled
         enableVideo(newState)

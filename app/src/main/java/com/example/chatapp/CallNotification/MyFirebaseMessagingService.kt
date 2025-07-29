@@ -84,6 +84,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             putExtra("sender_id", senderId)
             putExtra("sender_name", senderName)
                 .putExtra("action", "incoming_call")
+            putExtra("show_call_dialog", true)
         }
         val openAppPendingIntent = PendingIntent.getActivity(
             context, 2, openAppIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -119,6 +120,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .setContentText("$senderName is calling...")
             .setAutoCancel(false)
             .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_CALL)
             .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE))
@@ -127,6 +129,8 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             .addAction(R.drawable.acceptcall, "Accept", acceptPendingIntent)
             .setContentIntent(openAppPendingIntent) // This handles the tap on notification body
             .setFullScreenIntent(acceptPendingIntent, true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -142,6 +146,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
                 setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE), null)
                 setShowBadge(true)
                 lockscreenVisibility = NotificationCompat.VISIBILITY_PUBLIC
+                setBypassDnd(true)
             }
             notificationManager.createNotificationChannel(channel)
         }

@@ -35,6 +35,21 @@ object NotificationTokenManager {
     fun getToken(): String? {
         return prefs.getString(TOKEN_KEY, null)
     }
+    fun getTokenForUser(userId: String, callback: (String?) -> Unit) {
+        FirebaseFirestore.getInstance()
+            .collection("Users")
+            .document(userId)
+            .get()
+            .addOnSuccessListener { documentSnapshot ->
+                val token = documentSnapshot.getString("fcmToken")
+                callback(token)
+            }
+            .addOnFailureListener { exception ->
+                Log.e("FCM", "Failed to get FCM token for user: $userId", exception)
+                callback(null)
+            }
+    }
+
 
     fun saveTokenToFirestore(userId: String, token: String) {
         firestore.collection("Users").document(userId)
@@ -66,6 +81,7 @@ object NotificationTokenManager {
             .addOnFailureListener { e ->
                 Log.w("FCM", "Error checking if user exists", e)
             }
+
 
     }
 }

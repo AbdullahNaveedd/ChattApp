@@ -22,6 +22,11 @@ class Fragement_Activity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_fragement2)
+        val showIncomingCallDialog = intent.getBooleanExtra("show_incoming_call_dialog", false)
+        if (showIncomingCallDialog) {
+            showIncomingCallDialog()
+            return
+        }
 
         val showCallFragment = intent.getBooleanExtra("show_call_fragment", false)
         if (showCallFragment) {
@@ -101,6 +106,32 @@ class Fragement_Activity : AppCompatActivity() {
 
         // Load ads
         loadInterstitialAd()
+    }
+    private fun showIncomingCallDialog() {
+        val senderId = intent.getStringExtra("sender_id")
+        val senderName = intent.getStringExtra("sender_name")
+        val roomId = intent.getStringExtra("room_id")
+        val callType = intent.getStringExtra("call_type") ?: "voice"
+
+        Log.d("FragmentActivity", "Showing incoming call dialog for $senderName")
+
+        // ✅ Create and show call dialog fragment
+        val bundle = Bundle().apply {
+            putString("sender_id", senderId)
+            putString("sender_name", senderName)
+            putString("room_id", roomId)
+            putString("call_type", callType)
+        }
+
+        val dialogFragment = IncomingCall().apply {
+            arguments = bundle
+        }
+
+        dialogFragment.show(supportFragmentManager, "IncomingCallDialog")
+
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragment_container_view, Home())
+            .commit()
     }
 
     private fun loadInterstitialAd() {

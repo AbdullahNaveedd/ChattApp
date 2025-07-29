@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.androidx.espresso.core)
     implementation(libs.play.services.cast.tv)
     implementation(libs.firebase.functions.ktx)
+    implementation(libs.volley)
     annotationProcessor ("com.github.bumptech.glide:compiler:4.16.0")
     implementation ("com.google.android.material:material:1.12.0")
     implementation  ("io.livekit:livekit-android:2.9.0")

@@ -151,11 +151,15 @@ class Videocall : Fragment() {
                 eglBase = EglBase.create()
                 Log.d("Videocall", "EglBase created")
             }
+
             localRenderer.visibility = View.VISIBLE
             remoteRenderer.visibility = View.VISIBLE
 
+            // ✅ Use the SAME EglBase context for BOTH renderers
+            val sharedContext = eglBase!!.eglBaseContext
+
             try {
-                localRenderer.init(EglBase.create().eglBaseContext, null)
+                localRenderer.init(sharedContext, null)  // ✅ Use shared context
                 localRenderer.setMirror(true)
                 localRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
                 localRenderer.setEnableHardwareScaler(true)
@@ -169,10 +173,10 @@ class Videocall : Fragment() {
             }
 
             try {
-                remoteRenderer.init(eglBase!!.eglBaseContext, null)
+                remoteRenderer.init(sharedContext, null)  // ✅ Use shared context
                 remoteRenderer.setMirror(false)
                 remoteRenderer.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FIT)
-                remoteRenderer.setEnableHardwareScaler(true) // Enable hardware scaling
+                remoteRenderer.setEnableHardwareScaler(true)
                 Log.d("Videocall", "Remote renderer initialized")
             } catch (e: IllegalStateException) {
                 if (e.message?.contains("Already initialized") == true) {
@@ -190,7 +194,6 @@ class Videocall : Fragment() {
             throw e
         }
     }
-
     private fun initiateOrJoinVideoCall(view: View) {
         if (currentUserId == null) {
             showErrorAndReturn("User not authenticated")
@@ -286,18 +289,11 @@ class Videocall : Fragment() {
                         Log.d("Videocall", "Connected to video room: $roomId as participant: $participantName")
                         statusText?.visibility=View.GONE
                         liveKitManager.enableAudio(true)
+                        Log.d("Videocall", "Enabling audio...")
 
-                        view.postDelayed({
-                            try {
                                 liveKitManager.enableVideo(true)
                                 isCameraEnabled = true
                                 localRenderer.visibility = View.VISIBLE
-
-                                Log.d("LiveKit", "Video enabled successfully")
-                            } catch (e: Exception) {
-                                Log.e("LiveKit", "Error enabling video", e)
-                            }
-                        }, 500)
 
                         isMicEnabled = true
                         updateButtonStates()

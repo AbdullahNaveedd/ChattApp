@@ -24,7 +24,7 @@ class CallManager {
 
     private val LIVEKIT_API_KEY = "APIYJKVwDFd2gTv"
     private val LIVEKIT_SECRET_KEY = "RIOnqBjnnKfBllyuKUKzDhBeZU4KV84laKf9FSIwXO2B"
-    private val NOTIFICATION_SERVER_URL = "http://192.168.153.145:3000/message"
+    private val NOTIFICATION_SERVER_URL = "http://192.168.30.145:3000/message"
 
     fun initiateCall(
         senderId: String?,

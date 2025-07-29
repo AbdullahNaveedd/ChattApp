@@ -34,9 +34,13 @@ class MainActivity : AppCompatActivity() {
             100
         )
 
+
+
         NotificationTokenManager.initialize(this)
 
         if (intent?.hasExtra("action") == true) {
+            handleNotificationIntent(intent)
+        } else if (intent?.action == "OPEN_CALL_ACTIVITY") {
             handleNotificationIntent(intent)
         } else {
             handleNormalStartup()
@@ -78,11 +82,38 @@ class MainActivity : AppCompatActivity() {
     private fun handleNotificationIntent(intent: Intent?) {
         intent?.let {
             when (it.getStringExtra("action")) {
+                "incoming_call" -> {
+                    val showCallDialog = it.getBooleanExtra("show_call_dialog", false)
+                    if (showCallDialog) {
+                        handleIncomingCallDialog(it)
+                    } else {
+                        handleAcceptCall(it)
+                    }
+                }
                 "accept_call" -> handleAcceptCall(it)
                 "decline_call" -> handleDeclineCall(it)
                 "missed_call" -> handleMissedCall(it)
             }
         }
+    }
+    private fun handleIncomingCallDialog(intent: Intent) {
+        Log.d("CallFlow", "Showing incoming call dialog")
+
+        val senderId = intent.getStringExtra("sender_id")
+        val senderName = intent.getStringExtra("sender_name")
+        val roomId = intent.getStringExtra("room_id")
+        val callType = intent.getStringExtra("call_type") ?: "voice"
+
+        val callDialogIntent = Intent(this, Fragement_Activity::class.java).apply {
+            putExtra("show_incoming_call_dialog", true)
+            putExtra("sender_id", senderId)
+            putExtra("sender_name", senderName)
+            putExtra("room_id", roomId)
+            putExtra("call_type", callType)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        startActivity(callDialogIntent)
+        finish()
     }
 
     private fun handleAcceptCall(intent: Intent) {

@@ -42,6 +42,7 @@ import com.cloudinary.android.callback.UploadCallback
 import com.cloudinary.android.callback.ErrorInfo
 import com.example.chatapp.Auth.Message.FullScreenActivity
 import com.example.chatapp.Call.CallManager
+import com.example.chatapp.CallNotification.MessageNotificationSender
 import com.example.chatapp.CallNotification.NotificationTokenManager
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.FirebaseAuth
@@ -154,7 +155,7 @@ class UserChat : Fragment() {
 //        currentReceiverId = arguments?.getString("receiverId")
 
 }
-    private fun openFullScreenImage(context: android.content.Context, imageUrl: String) {
+    private fun openFullScreenImage(context: Context, imageUrl: String) {
         val intent = Intent(context, FullScreenActivity::class.java).apply {
             putExtra(FullScreenActivity.EXTRA_IMAGE_URL, imageUrl)
         }
@@ -235,14 +236,32 @@ class UserChat : Fragment() {
 
         sendBtn?.setOnClickListener {
             sendTextMessage()
+            MessageNotificationSender.sendMessageNotification(
+                context = requireContext(),
+                senderId = currentUserId ?: return@setOnClickListener,
+                receiverId = currentReceiverId ?: return@setOnClickListener,
+                messageType = "text"
+            )
         }
 
         cam?.setOnClickListener {
             openImagePicker()
+            MessageNotificationSender.sendMessageNotification(
+                context = requireContext(),
+                senderId = currentUserId ?: return@setOnClickListener,
+                receiverId = currentReceiverId ?: return@setOnClickListener,
+                messageType = "image",
+            )
         }
 
         mic?.setOnClickListener {
             handleVoiceRecording()
+            MessageNotificationSender.sendMessageNotification(
+                context = requireContext(),
+                senderId = currentUserId ?: return@setOnClickListener,
+                receiverId = currentReceiverId ?: return@setOnClickListener,
+                messageType = "voice"
+            )
         }
 
         editText.addTextChangedListener(object : TextWatcher {
@@ -254,6 +273,8 @@ class UserChat : Fragment() {
             override fun afterTextChanged(s: Editable?) {}
         })
     }
+
+
 
     private fun navigateToFragment(fragment: Fragment) {
         val fragmentTransaction =
