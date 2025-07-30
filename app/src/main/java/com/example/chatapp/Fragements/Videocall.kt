@@ -288,14 +288,17 @@ class Videocall : Fragment() {
                         isCallActive = true
                         Log.d("Videocall", "Connected to video room: $roomId as participant: $participantName")
                         statusText?.visibility=View.GONE
+
                         liveKitManager.enableAudio(true)
-                        Log.d("Videocall", "Enabling audio...")
-
-                                liveKitManager.enableVideo(true)
-                                isCameraEnabled = true
-                                localRenderer.visibility = View.VISIBLE
-
                         isMicEnabled = true
+                        Log.d("Videocall", "Audio enabled")
+
+                        Log.d("Videocall", "Enabling video...")
+                        liveKitManager.enableVideo(true)
+                        isCameraEnabled = true
+                        localRenderer.visibility = View.VISIBLE
+
+
                         updateButtonStates()
 
                         if (isCallInitiator) {

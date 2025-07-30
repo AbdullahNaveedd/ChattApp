@@ -7,5 +7,6 @@ data class CallRoom(
     val status: String? = null,
     val createdAt: Long = 0,
     val tokens: Map<String, String> = emptyMap(),
-    val endedAt: Long? = null
+    val endedAt: Long? = null,
+    val isNewCall: Boolean = false
 )

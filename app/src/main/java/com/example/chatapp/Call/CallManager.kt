@@ -69,20 +69,20 @@ class CallManager {
                                     }
                                     "ended" -> {
                                         Log.d("CallManager", "Previous call ended, creating new one...")
-                                        createNewRoom(roomId, senderId, receiverId, onRoomCreated, onError)
+                                        createNewRoom(roomId, senderId, receiverId,false, onRoomCreated, onError)
                                     }
                                     else -> {
                                         Log.d("CallManager", "Creating new room...")
-                                        createNewRoom(roomId, senderId, receiverId, onRoomCreated, onError)
+                                        createNewRoom(roomId, senderId, receiverId,false,onRoomCreated, onError)
                                     }
                                 }
                             } else {
                                 Log.d("CallManager", "Invalid room data, creating new...")
-                                createNewRoom(roomId, senderId, receiverId, onRoomCreated, onError)
+                                createNewRoom(roomId, senderId, receiverId,false, onRoomCreated, onError)
                             }
                         } else {
                             Log.d("CallManager", "No existing room, creating new...")
-                            createNewRoom(roomId, senderId, receiverId, onRoomCreated, onError)
+                            createNewRoom(roomId, senderId, receiverId,false, onRoomCreated, onError)
                         }
                     } catch (e: Exception) {
                         Log.e("CallManager", "Error in onDataChange", e)
@@ -228,7 +228,6 @@ class CallManager {
                     .addOnSuccessListener { receiverDoc ->
                         val fcmToken = receiverDoc.getString("fcmToken")
                         Log.d("CallManager", "Receiver FCM token exists: ${fcmToken != null}")
-
                         if (!fcmToken.isNullOrEmpty()) {
                             Log.d("CallManager", "Sending notification to $receiverId with token: ${fcmToken.take(20)}...")
                             sendNotificationViaHTTP(fcmToken, senderName, callType, senderId, roomId,receiverId)
@@ -449,6 +448,7 @@ class CallManager {
         roomId: String,
         creatorId: String,
         receiverId: String,
+        isSwitchingToVideo: Boolean = false,
         onRoomCreated: (roomId: String, token: String) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -470,7 +470,6 @@ class CallManager {
             }
 
             Log.d("CallManager", "Tokens generated successfully")
-
             val callRoom = CallRoom(
                 roomId = roomId,
                 createdBy = creatorId,
@@ -480,20 +479,22 @@ class CallManager {
                 tokens = mapOf(
                     creatorId to creatorToken,
                     receiverId to receiverToken
-                )
+                ),
+                isNewCall =  !isSwitchingToVideo
             )
 
             database.child("calls").child(roomId).setValue(callRoom)
                 .addOnSuccessListener {
                     Log.d("CallManager", "Room created successfully in database")
 
-                    // Send notification to receiver
-                    sendCallNotification(
-                        senderId = creatorId,
-                        receiverId = receiverId,
-                        roomId = roomId,
-                        callType = "incoming_call"
-                    )
+                    if (callRoom.isNewCall == true) {
+                        sendCallNotification(
+                            senderId = creatorId,
+                            receiverId = receiverId,
+                            roomId = roomId,
+                            callType = "incoming_call"
+                        )
+                    }
 
                     // Return the token to the creator
                     onRoomCreated(roomId, creatorToken)

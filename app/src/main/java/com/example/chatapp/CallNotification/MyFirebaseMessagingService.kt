@@ -24,6 +24,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         Log.d("FCM", "From: ${remoteMessage.from}")
+        val data = remoteMessage.data
 
         if (remoteMessage.data.isNotEmpty()) {
             Log.d("FCM", "Message data payload: ${remoteMessage.data}")
@@ -42,9 +43,12 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             when (callType) {
                 "incoming_call" -> {
-                    // Always show the incoming call notification with accept/decline actions
-                    // regardless of app state (foreground/background)
-                    showIncomingCallNotification(senderId, senderName, roomId, callType)
+                    val isNewCall = data["isNewCall"]?.toString()?.toBoolean() ?: true
+                    if (isNewCall) {
+                        showIncomingCallNotification(senderId, senderName, roomId, callType)
+                    } else {
+                        Log.d("CallNotification", "Switch call detected. Not showing incoming call notification.")
+                    }
                 }
                 "call_ended" -> {
                     cancelCallNotification()
@@ -60,8 +64,17 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             // Check if this is not a call-related notification
             val callType = remoteMessage.data["call_type"]
             if (callType == null || callType.isEmpty()) {
-                sendNotification(it.body ?: "New message")
+                val data = remoteMessage.data
+
+                sendNotification(
+                    senderId = data["sender_id"],
+                    senderName = data["sender_name"],
+                    roomId = data["room_id"],
+                    callType = null,
+                    messageBody = remoteMessage.notification?.body ?: "New message"
+                )
             }
+
         }
     }
 
@@ -159,9 +172,18 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         notificationManager.cancel(1001)
     }
 
-    private fun sendNotification(messageBody: String) {
-        val intent = Intent(this, MainActivity::class.java)
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+    private fun sendNotification(senderId: String?, senderName: String?, roomId: String?, callType: String?,messageBody: String) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+            putExtra("call_type", callType)
+            putExtra("room_id", roomId)
+            putExtra("sender_id", senderId)
+            putExtra("sender_name", senderName)
+            putExtra("show_call_dialog", true)
+
+            Log.d("CallDebug", "Action: incoming_call, CallType: $callType, showCallDialog: true")
+
+        }
 
         val pendingIntent = PendingIntent.getActivity(
             this, 0, intent, PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE

@@ -34,17 +34,20 @@ class MainActivity : AppCompatActivity() {
             100
         )
 
-
-
-        NotificationTokenManager.initialize(this)
-
-        if (intent?.hasExtra("action") == true) {
-            handleNotificationIntent(intent)
-        } else if (intent?.action == "OPEN_CALL_ACTIVITY") {
+        if (intent != null) {
             handleNotificationIntent(intent)
         } else {
             handleNormalStartup()
         }
+
+        NotificationTokenManager.initialize(this)
+
+        if (intent != null && (intent.hasExtra("action") || intent.hasExtra("call_type"))) {
+            handleNotificationIntent(intent)
+        } else {
+            handleNormalStartup()
+        }
+
     }
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -81,21 +84,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun handleNotificationIntent(intent: Intent?) {
         intent?.let {
-            when (it.getStringExtra("action")) {
-                "incoming_call" -> {
-                    val showCallDialog = it.getBooleanExtra("show_call_dialog", false)
-                    if (showCallDialog) {
-                        handleIncomingCallDialog(it)
-                    } else {
-                        handleAcceptCall(it)
-                    }
-                }
+            val callType = it.getStringExtra("call_type")
+            val action = it.getStringExtra("action")
+
+            Log.d("CallIntent", "Received Intent - Action: $action, CallType: $callType")
+
+            when (action) {
                 "accept_call" -> handleAcceptCall(it)
                 "decline_call" -> handleDeclineCall(it)
                 "missed_call" -> handleMissedCall(it)
+                "incoming_call", null -> {
+                    if (callType == "incoming_call") {
+                        val showCallDialog = it.getBooleanExtra("show_call_dialog", true)
+                        if (showCallDialog) {
+                            handleIncomingCallDialog(it)
+                        }
+                    }
+                }
+
             }
         }
     }
+
     private fun handleIncomingCallDialog(intent: Intent) {
         Log.d("CallFlow", "Showing incoming call dialog")
 

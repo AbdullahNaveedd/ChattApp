@@ -18,6 +18,7 @@ import com.example.chatapp.Call.CallManager
 import com.example.chatapp.LiveKt.LiveKitManager
 import com.example.chatapp.R
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 import io.livekit.android.renderer.SurfaceViewRenderer
 import livekit.org.webrtc.EglBase
 import okhttp3.Call
@@ -48,6 +49,8 @@ class VoiceCall : Fragment() {
     private var currentRoomId: String? = null
     private var isCallActive = false
     private var hasParticipantJoined = false
+    private val database = FirebaseDatabase.getInstance().reference
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -324,22 +327,30 @@ class VoiceCall : Fragment() {
                 Log.d("VoiceCall", "Switching to video call with room: $currentRoomId")
             }
 
-            val fragment = Videocall().apply {
-                arguments = Bundle().apply {
-                    putString("senderId", senderId)
-                    putString("receiverId", receiverId)
-                    putString("roomId", currentRoomId)
-                    putBoolean("isCallInitiator", isCallInitiator)
-                    putBoolean("isIncomingCall", false)
-                    putBoolean("isSwitchingFromVoice", true)
+            // Update isNewCall = false in Firebase
+            database.child("calls").child(currentRoomId.toString()).child("isNewCall").setValue(false)
+                .addOnSuccessListener {
+                    Log.d("CallSwitch", "isNewCall set to false successfully")
+
+                    val fragment = Videocall().apply {
+                        arguments = Bundle().apply {
+                            putString("senderId", senderId)
+                            putString("receiverId", receiverId)
+                            putString("roomId", currentRoomId)
+                            putBoolean("isCallInitiator", isCallInitiator)
+                            putBoolean("isSwitchingFromVoice", true)
+                        }
+                    }
+
+                    if (::liveKitManager.isInitialized) {
+                        liveKitManager.disconnect()
+                    }
+
+                    replaceFragment(fragment)
                 }
-            }
-
-            if (::liveKitManager.isInitialized) {
-                liveKitManager.disconnect()
-            }
-
-            replaceFragment(fragment)
+                .addOnFailureListener {
+                    Log.e("CallSwitch", "Failed to update isNewCall flag", it)
+                }
         }
         messagev.setOnClickListener {
             val fragment = UserChat().apply {

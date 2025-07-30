@@ -228,6 +228,8 @@ class LiveKitManager(
                 // Attach existing video track to local renderer if it exists
                 videoTrack?.let { track ->
                     try {
+                        track.removeRenderer(localRenderer)
+
                         track.addRenderer(localRenderer)
                         Log.d("LiveKit", "Existing video track attached to local renderer")
                     } catch (e: Exception) {
@@ -241,7 +243,25 @@ class LiveKitManager(
             Log.d("LiveKit", "Room not yet connected, renderers will be initialized on connection")
         }
     }
+    fun attachVideoToLocalRenderer() {
+        scope.launch {
+            try {
+                if (::room.isInitialized && isRoomConnected && videoTrack != null) {
+                    localRenderer?.let { renderer ->
+                        Log.d("LiveKit", "Force attaching existing video track to local renderer...")
+                        videoTrack?.removeRenderer(renderer) // Remove first
+                        videoTrack?.addRenderer(renderer)    // Then add
+                        renderer.requestLayout()
+                        renderer.invalidate()
 
+                        Log.d("LiveKit", "✅ Video track force-attached to local renderer")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("LiveKit", "Error force-attaching video track", e)
+            }
+        }
+    }
     fun enableAudio(enable: Boolean) {
         scope.launch {
             try {
@@ -266,6 +286,9 @@ class LiveKitManager(
 
                 if (::room.isInitialized && isRoomConnected) {
                     if (enable) {
+                        room.localParticipant.setCameraEnabled(true)
+                        Log.d("LiveKit", "Camera enabled first")
+
                         if (videoTrack == null) {
                             Log.d("LiveKit", "Creating new video track...")
 
@@ -280,21 +303,18 @@ class LiveKitManager(
                             // Attach to local renderer
                             localRenderer?.let { renderer ->
                                 try {
-                                    Log.d("LiveKit", "Attaching video track to local renderer...")
+                                    videoTrack?.removeRenderer(renderer)
+
                                     videoTrack?.addRenderer(renderer)
-                                    Log.d("LiveKit", "✅ Local video track attached to renderer successfully")
+                                    renderer.requestLayout()
+                                    renderer.invalidate()
                                 } catch (e: Exception) {
-                                    Log.e("LiveKit", "❌ Error attaching local renderer to track", e)
                                 }
                             } ?: Log.e("LiveKit", "❌ Local renderer is null!")
 
                         } else {
                             Log.d("LiveKit", "Video track already exists, just enabling camera")
                         }
-
-                        // Enable camera
-                        room.localParticipant.setCameraEnabled(true)
-                        Log.d("LiveKit", "Camera enabled")
 
                     } else {
                         room.localParticipant.setCameraEnabled(false)
