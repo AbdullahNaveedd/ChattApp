@@ -53,11 +53,14 @@ class LiveKitManager(
                     options = ConnectOptions(autoSubscribe = true)
                 )
 
-                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+                val audioManager =
+                    context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
                 audioManager.mode = android.media.AudioManager.MODE_IN_COMMUNICATION
                 audioManager.isSpeakerphoneOn = true
 
                 initializeRenderersWithRoom()
+
+
 
                 createAndPublishAudioTrack()
                 createAndPublishVideoTrack()
@@ -68,7 +71,10 @@ class LiveKitManager(
                 onConnected()
                 Log.d("LiveKit", "Connected to room: ${room.name} and ${room.localParticipant}")
                 Log.d("LiveKit", "Connecting to room with token: $token and server: $serverUrl")
-                Log.d("LiveKit", "AudioManager Mode: ${audioManager.mode}, Speakerphone ON: ${audioManager.isSpeakerphoneOn}")
+                Log.d(
+                    "LiveKit",
+                    "AudioManager Mode: ${audioManager.mode}, Speakerphone ON: ${audioManager.isSpeakerphoneOn}"
+                )
 
             } catch (e: Exception) {
                 Log.e("LiveKit", "Connection failed", e)
@@ -80,7 +86,6 @@ class LiveKitManager(
 
     private fun initializeRenderersWithRoom() {
         try {
-            // Only initialize renderers if they haven't been initialized with the room yet
             localRenderer?.let { renderer ->
                 try {
                     room.initVideoRenderer(renderer)
@@ -174,7 +179,10 @@ class LiveKitManager(
                     is RoomEvent.TrackSubscribed -> {
                         val track = event.track
                         val participant = event.participant
-                        Log.d("LiveKit", "Track subscribed from: ${participant.identity}, Track type: ${track?.javaClass?.simpleName}")
+                        Log.d(
+                            "LiveKit",
+                            "Track subscribed from: ${participant.identity}, Track type: ${track?.javaClass?.simpleName}"
+                        )
 
                         when (track) {
                             is RemoteVideoTrack -> {
@@ -183,13 +191,20 @@ class LiveKitManager(
                                         track.addRenderer(renderer)
                                         Log.d("LiveKit", "Remote video track added to renderer")
                                     } catch (e: Exception) {
-                                        Log.e("LiveKit", "Error adding remote video track to renderer", e)
+                                        Log.e(
+                                            "LiveKit",
+                                            "Error adding remote video track to renderer",
+                                            e
+                                        )
                                     }
                                 }
                             }
 
                             is RemoteAudioTrack -> {
-                                Log.d("LiveKit", "Remote audio track received - audio should now work")
+                                Log.d(
+                                    "LiveKit",
+                                    "Remote audio track received - audio should now work"
+                                )
                             }
                         }
                     }
@@ -223,23 +238,15 @@ class LiveKitManager(
         this.remoteRenderer = remoteRenderer
 
 
-
-
         // If room is already connected, initialize renderers with room
         if (::room.isInitialized && isRoomConnected) {
             try {
-                initializeRenderersWithRoom()
 
-                // Attach existing video track to local renderer if it exists
                 videoTrack?.let { track ->
-                    try {
-                        track.removeRenderer(localRenderer)
-
-                        track.addRenderer(localRenderer)
-                        Log.d("LiveKit", "Existing video track attached to local renderer")
-                    } catch (e: Exception) {
-                        Log.e("LiveKit", "Error attaching existing video track", e)
-                    }
+                    track.addRenderer(localRenderer)
+                    Log.d("LiveKit", "Video renderer re-attached in setRenderers")
+                } ?: run {
+                    createAndPublishVideoTrack()
                 }
             } catch (e: Exception) {
                 Log.e("LiveKit", "Error setting up renderers", e)
@@ -248,25 +255,7 @@ class LiveKitManager(
             Log.d("LiveKit", "Room not yet connected, renderers will be initialized on connection")
         }
     }
-    fun attachVideoToLocalRenderer() {
-        scope.launch {
-            try {
-                if (::room.isInitialized && isRoomConnected && videoTrack != null) {
-                    localRenderer?.let { renderer ->
-                        Log.d("LiveKit", "Force attaching existing video track to local renderer...")
-                        videoTrack?.removeRenderer(renderer) // Remove first
-                        videoTrack?.addRenderer(renderer)    // Then add
-                        renderer.requestLayout()
-                        renderer.invalidate()
 
-                        Log.d("LiveKit", "✅ Video track force-attached to local renderer")
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("LiveKit", "Error force-attaching video track", e)
-            }
-        }
-    }
     fun enableAudio(enable: Boolean) {
         scope.launch {
             try {
@@ -286,7 +275,10 @@ class LiveKitManager(
         scope.launch {
             try {
                 Log.d("LiveKit", "enableVideo called with enable=$enable")
-                Log.d("LiveKit", "Room initialized: ${::room.isInitialized}, Connected: $isRoomConnected")
+                Log.d(
+                    "LiveKit",
+                    "Room initialized: ${::room.isInitialized}, Connected: $isRoomConnected"
+                )
                 Log.d("LiveKit", "Local renderer available: ${localRenderer != null}")
 
                 if (::room.isInitialized && isRoomConnected) {
@@ -327,16 +319,23 @@ class LiveKitManager(
                     }
 
                     isVideoEnabled = enable
-                    Log.d("LiveKit", "✅ Video ${if (enable) "enabled" else "disabled"} successfully")
+                    Log.d(
+                        "LiveKit",
+                        "✅ Video ${if (enable) "enabled" else "disabled"} successfully"
+                    )
 
                 } else {
-                    Log.e("LiveKit", "❌ Cannot enable video - Room not ready. Initialized: ${::room.isInitialized}, Connected: $isRoomConnected")
+                    Log.e(
+                        "LiveKit",
+                        "❌ Cannot enable video - Room not ready. Initialized: ${::room.isInitialized}, Connected: $isRoomConnected"
+                    )
                 }
             } catch (e: Exception) {
                 Log.e("LiveKit", "❌ Failed to toggle video", e)
             }
         }
     }
+
     fun toggleVideo(): Boolean {
         val newState = !isVideoEnabled
         enableVideo(newState)
@@ -351,7 +350,8 @@ class LiveKitManager(
 
     fun toggleSpeaker(): Boolean {
         isSpeakerEnabled = !isSpeakerEnabled
-        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+        val audioManager =
+            context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
         audioManager.isSpeakerphoneOn = isSpeakerEnabled
         Log.d("LiveKit", "Speaker ${if (isSpeakerEnabled) "enabled" else "disabled"}")
         return isSpeakerEnabled

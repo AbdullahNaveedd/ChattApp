@@ -99,7 +99,7 @@ class VoiceCall : Fragment() {
         } else {
             imgname.text = senderId ?: "Unknown"
         }
-        videov.visibility=View.GONE
+//        videov.visibility=View.GONE
         initiateOrJoinCall(view)
     }
 
