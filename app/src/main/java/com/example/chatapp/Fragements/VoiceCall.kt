@@ -99,7 +99,7 @@ class VoiceCall : Fragment() {
         } else {
             imgname.text = senderId ?: "Unknown"
         }
-
+        videov.visibility=View.GONE
         initiateOrJoinCall(view)
     }
 
@@ -397,9 +397,18 @@ class VoiceCall : Fragment() {
 
     private fun replaceFragment(fragment: Fragment) {
         try {
-            val fragmentTransaction = (requireActivity() as AppCompatActivity).supportFragmentManager.beginTransaction()
-            fragmentTransaction.replace(R.id.fragment_container_view, fragment)
-            fragmentTransaction.commit()
+            val fragmentManager = (requireActivity() as AppCompatActivity).supportFragmentManager
+
+            if (!fragmentManager.isStateSaved) {
+                fragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container_view, fragment)
+                    .commit()
+            } else {
+                fragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container_view, fragment)
+                    .commitAllowingStateLoss() // Safe fallback
+            }
+
         } catch (e: Exception) {
             Log.e("VoiceCall", "Error replacing fragment", e)
         }

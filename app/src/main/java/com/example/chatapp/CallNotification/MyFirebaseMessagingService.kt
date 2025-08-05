@@ -43,18 +43,20 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
             when (callType) {
                 "incoming_call" -> {
-                    val isNewCall = data["isNewCall"]?.toString()?.toBoolean() ?: true
+                    val isNewCall = data["isNewCall"]?.toBoolean() ?: true
                     if (isNewCall) {
+                        Log.d("FCM", "Room id is: $roomId")
+
                         showIncomingCallNotification(senderId, senderName, roomId, callType)
                     } else {
-                        Log.d("CallNotification", "Switch call detected. Not showing incoming call notification.")
+                        Log.d("CallNotification", "Call switch detected. Skipping notification.")
                     }
                 }
-                "call_ended" -> {
-                    cancelCallNotification()
+                "switch_call" -> {
+                    Log.d("CallNotification", "Handling switch call silently.")
                 }
-                "call_accepted" -> cancelCallNotification()
-                "call_declined" -> cancelCallNotification()
+                "call_ended", "call_accepted", "call_declined" -> cancelCallNotification()
+
             }
         }
 

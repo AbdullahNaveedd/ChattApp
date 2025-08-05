@@ -14,7 +14,7 @@ import io.livekit.android.room.track.RemoteVideoTrack
 import io.livekit.android.room.track.RemoteAudioTrack
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
-import livekit.org.webrtc.EglBase
+
 
 class LiveKitManager(
     private val context: Context,
@@ -29,6 +29,7 @@ class LiveKitManager(
     private var localRenderer: SurfaceViewRenderer? = null
     private var audioTrack: LocalAudioTrack? = null
     private var videoTrack: LocalVideoTrack? = null
+
 
     private var isAudioEnabled = true
     private var isVideoEnabled = false
@@ -59,6 +60,7 @@ class LiveKitManager(
                 initializeRenderersWithRoom()
 
                 createAndPublishAudioTrack()
+                createAndPublishVideoTrack()
 
                 observeRoomEvents(onParticipantJoined, onParticipantLeft)
 
@@ -219,6 +221,9 @@ class LiveKitManager(
 
         this.localRenderer = localRenderer
         this.remoteRenderer = remoteRenderer
+
+
+
 
         // If room is already connected, initialize renderers with room
         if (::room.isInitialized && isRoomConnected) {
