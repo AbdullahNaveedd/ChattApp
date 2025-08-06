@@ -25,6 +25,11 @@ class CallManager {
     private val LIVEKIT_API_KEY = "APIYJKVwDFd2gTv"
     private val LIVEKIT_SECRET_KEY = "RIOnqBjnnKfBllyuKUKzDhBeZU4KV84laKf9FSIwXO2B"
     private val NOTIFICATION_SERVER_URL = "http://192.168.253.145:3000/message"
+    private var hasCallStarted = false
+    var isSwitchingToVideo: Boolean = false
+
+
+
 
     fun initiateCall(
         senderId: String?,
@@ -211,29 +216,42 @@ class CallManager {
             Log.e("CallManager", "Invalid parameters for notification")
             return
         }
-
         Log.d("CallManager", "Preparing to send notification from $senderId to $receiverId")
 
-        // Get sender's name and receiver's FCM token
+
+        if (hasCallStarted) {
+            Log.d("CallManager", "Call already started, not sending notification again")
+            return
+        }
+
         firestore.collection("Users").document(senderId)
             .get()
             .addOnSuccessListener { senderDoc ->
                 val senderName = senderDoc.getString("name")
                     ?: senderDoc.getString("email")
                     ?: senderId
-                Log.d("CallManager", "Sender name: $senderName")
 
                 firestore.collection("Users").document(receiverId)
                     .get()
                     .addOnSuccessListener { receiverDoc ->
                         val fcmToken = receiverDoc.getString("fcmToken")
-                        Log.d("CallManager", "Receiver FCM token exists: ${fcmToken != null}")
+
+
                         if (!fcmToken.isNullOrEmpty()) {
-                            Log.d("CallManager", "Sending notification to $receiverId with token: ${fcmToken.take(20)}...")
-                            sendNotificationViaHTTP(fcmToken, senderName, callType, senderId, roomId,receiverId)
+                            sendNotificationViaHTTP(
+                                fcmToken,
+                                senderName,
+                                callType,
+                                senderId,
+                                roomId,
+                                receiverId,
+                                isNewCall = !isSwitchingToVideo
+                            )
+
+                            // ✅ Mark that call has started so we don’t notify again
+                            hasCallStarted = true
                         } else {
                             Log.w("CallManager", "No FCM token found for receiver: $receiverId")
-                            Log.d("CallManager", "Available fields in receiver doc: ${receiverDoc.data?.keys}")
                         }
                     }
                     .addOnFailureListener { e ->
@@ -251,7 +269,8 @@ class CallManager {
         callType: String,
         senderId: String,
         roomId: String,
-        receiverId: String
+        receiverId: String,
+        isNewCall: Boolean
     ) {
         if (fcmToken.isEmpty() || senderName.isEmpty() || senderId.isEmpty() || roomId.isEmpty()) {
             Log.e("CallManager", "Invalid parameters for HTTP notification")
@@ -270,6 +289,8 @@ class CallManager {
                 put("sender_name", senderName)
                 put("room_id", roomId)
                 put("receiver_id",receiverId)
+                put("isNewCall", isNewCall.toString())
+
             })
         }
 
@@ -448,7 +469,7 @@ class CallManager {
         roomId: String,
         creatorId: String,
         receiverId: String,
-        isSwitchingToVideo: Boolean = false,
+        isSwitchingToVideo: Boolean = true,
         onRoomCreated: (roomId: String, token: String) -> Unit,
         onError: (String) -> Unit
     ) {

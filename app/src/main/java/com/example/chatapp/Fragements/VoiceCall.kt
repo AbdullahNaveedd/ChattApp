@@ -50,6 +50,8 @@ class VoiceCall : Fragment() {
     private var isCallActive = false
     private var hasParticipantJoined = false
     private val database = FirebaseDatabase.getInstance().reference
+    var isSwitchingToVideo: Boolean = false
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -323,11 +325,11 @@ class VoiceCall : Fragment() {
         }
 
         videov.setOnClickListener {
+            isSwitchingToVideo = true
             if (::liveKitManager.isInitialized) {
                 Log.d("VoiceCall", "Switching to video call with room: $currentRoomId")
             }
 
-            // Update isNewCall = false in Firebase
             database.child("calls").child(currentRoomId.toString()).child("isNewCall").setValue(false)
                 .addOnSuccessListener {
                     Log.d("CallSwitch", "isNewCall set to false successfully")
@@ -341,9 +343,11 @@ class VoiceCall : Fragment() {
                             putBoolean("isSwitchingFromVoice", true)
                         }
                     }
+//                    isSwitchingToVideo = false
 
                     if (::liveKitManager.isInitialized) {
                         liveKitManager.disconnect()
+
                     }
 
                     replaceFragment(fragment)
