@@ -37,6 +37,7 @@ class CallManager {
         onRoomCreated: (roomId: String, token: String) -> Unit,
         onError: (String) -> Unit
     ) {
+
         // Validate input parameters
         if (senderId.isNullOrEmpty()) {
             onError("Invalid sender ID")
@@ -105,6 +106,7 @@ class CallManager {
             Log.e("CallManager", "Error initiating call", e)
             onError("Failed to initiate call: ${e.message}")
         }
+
     }
         fun declineCall(roomId: String?, userId: String?) {
             if (roomId.isNullOrEmpty() || userId.isNullOrEmpty()) {

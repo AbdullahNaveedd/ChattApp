@@ -193,6 +193,11 @@ class MainActivity : AppCompatActivity() {
         val roomId = intent.getStringExtra("room_id")
         Log.d(TAG, "Declining call from $senderId")
 
+        roomId?.let { room ->
+            val callRef = FirebaseDatabase.getInstance().reference.child("calls").child(room)
+            callRef.child("status").setValue("declined")
+        }
+
         val intent = Intent(this, Fragement_Activity::class.java)
         startActivity(intent)
         finish()

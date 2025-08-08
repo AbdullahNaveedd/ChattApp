@@ -15,10 +15,14 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.chatapp.Call.CallManager
+import com.example.chatapp.Call.CallRoom
 import com.example.chatapp.LiveKt.LiveKitManager
 import com.example.chatapp.R
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import io.livekit.android.renderer.SurfaceViewRenderer
 import livekit.org.webrtc.EglBase
 import okhttp3.Call
@@ -138,6 +142,7 @@ class VoiceCall : Fragment() {
                 onRoomCreated = { roomId, token ->
                     currentRoomId = roomId
                     updateCallStatus("Calling $receiverId...")
+                    observeCallStatus(roomId)
                     setupLiveKit(view, roomId, token, currentUserId!!)
                 },
                 onError = { error ->
@@ -168,6 +173,27 @@ class VoiceCall : Fragment() {
             )
         }
     }
+
+    private fun observeCallStatus(roomId: String) {
+        val callRef = FirebaseDatabase.getInstance().getReference("calls").child(roomId)
+        callRef.child("status").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val status = snapshot.getValue(String::class.java)
+                if (status == "declined") {
+                    Log.d("VoiceCall", "Call was declined. Ending call.")
+                    endCall()
+                } else if (status == "ended") {
+                    Log.d("VoiceCall", "Call was ended by the user.")
+                    endCall()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("VoiceCall", "Failed to listen to call status: ${error.message}")
+            }
+        })
+    }
+
 
     private fun updateCallStatus(status: String) {
         activity?.runOnUiThread {
