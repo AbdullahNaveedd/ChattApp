@@ -34,6 +34,7 @@ class CallManager {
     fun initiateCall(
         senderId: String?,
         receiverId: String?,
+        recieverName: String?,
         onRoomCreated: (roomId: String, token: String) -> Unit,
         onError: (String) -> Unit
     ) {

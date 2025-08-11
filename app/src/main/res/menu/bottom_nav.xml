@@ -6,10 +6,10 @@
         android:title="Messages"
         android:icon="@drawable/message"/>
 
-    <item
-        android:id="@+id/call"
-        android:title="Calls"
-        android:icon="@drawable/call"/>
+<!--    <item-->
+<!--        android:id="@+id/call"-->
+<!--        android:title="Calls"-->
+<!--        android:icon="@drawable/call"/>-->
 
     <item
         android:id="@+id/contact"

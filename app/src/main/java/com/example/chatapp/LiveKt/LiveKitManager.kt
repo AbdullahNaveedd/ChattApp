@@ -345,7 +345,7 @@ class LiveKitManager(
     fun toggleMicrophone(): Boolean {
         isAudioEnabled = !isAudioEnabled
         enableAudio(isAudioEnabled)
-        return !isAudioEnabled
+        return isAudioEnabled
     }
 
     fun toggleSpeaker(): Boolean {

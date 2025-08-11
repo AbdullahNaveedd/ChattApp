@@ -67,6 +67,7 @@ class Message : Fragment() {
                 openFullScreenImage(requireContext(), it)
             }
         }
+        statusRecyclerView.visibility=View.GONE
 
     }
 

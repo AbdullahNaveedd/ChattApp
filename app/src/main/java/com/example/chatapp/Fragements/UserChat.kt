@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.graphics.PorterDuff
 import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
@@ -71,6 +72,8 @@ class UserChat : Fragment() {
     private lateinit var callimage: ImageView
     private lateinit var recyclerViews: RecyclerView
     private lateinit var editText: TextInputEditText
+    private var mic: ImageView? = null
+
 
     val userChatList = mutableListOf<UserChatDataClass>()
     private lateinit var adapter: UserChatAdapter
@@ -83,6 +86,7 @@ class UserChat : Fragment() {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
     private var currentUserId: String? = null
+    private var recieverName: String? = null
     private var currentChatId: String? = null
     private var currentReceiverId: String? = null
     private var currentRoomId: String? = null
@@ -99,12 +103,15 @@ class UserChat : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        mic = view.findViewById(R.id.mic)
+
         initializeViews(view)
         setupRecyclerView()
         setupClickListeners()
         setupCameraLauncher()
 
         initializeCurrentUser()
+
 
         videobtn.visibility=View.GONE
     }
@@ -131,9 +138,12 @@ class UserChat : Fragment() {
         editText = view.findViewById(R.id.edittextmsg)
         recyclerViews = view.findViewById(R.id.userchatrecyclerview)
 
+
         val receiverName = arguments?.getString("receiverName") ?: "Unknown"
         callname.text = receiverName
         currentReceiverId = arguments?.getString("receiverId")
+        recieverName = arguments?.getString("receiverName") ?: "Unknown"
+
 
 
         val receiverImage = arguments?.getString("receiverImage") ?: ""
@@ -182,11 +192,13 @@ class UserChat : Fragment() {
             callManager.initiateCall(
                 senderId = currentUserId!!,
                 receiverId = currentReceiverId!!,
+                recieverName = recieverName,
                 onRoomCreated = { roomId, token ->
                     val fragment = VoiceCall().apply {
                         arguments = Bundle().apply {
                             putString("senderId", currentUserId)
                             putString("receiverId", currentReceiverId)
+                            putString("receiverName", recieverName)
                             putString("roomId", roomId)
                             putBoolean("isCallInitiator", true)
                             putBoolean("isIncomingCall", false) // initiator is not "incoming"
@@ -196,8 +208,9 @@ class UserChat : Fragment() {
                 },
                 onError = { error ->
                     Log.e("Video", "Error initiating call: $error")
-                    Toast.makeText(requireContext(), "Call failed: $error", Toast.LENGTH_SHORT).show()
-                }
+                    Toast.makeText(requireContext(), "Call failed: $error", Toast.LENGTH_SHORT)
+                        .show()
+                },
             )
         }
 
@@ -211,11 +224,13 @@ class UserChat : Fragment() {
             callManager.initiateCall(
                 senderId = currentUserId!!,
                 receiverId = currentReceiverId!!,
+                recieverName = recieverName,
                 onRoomCreated = { roomId, token ->
                     val fragment = VoiceCall().apply {
                         arguments = Bundle().apply {
                             putString("senderId", currentUserId)
                             putString("receiverId", currentReceiverId)
+                            putString("receiverName", recieverName)
                             putString("roomId", roomId)
                             putBoolean("isCallInitiator", true)
                             putBoolean("isIncomingCall", false) // initiator is not "incoming"
@@ -263,7 +278,6 @@ class UserChat : Fragment() {
                 messageType = "voice"
             )
         }
-
         editText.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
@@ -273,6 +287,7 @@ class UserChat : Fragment() {
             override fun afterTextChanged(s: Editable?) {}
         })
     }
+
 
 
 
@@ -736,8 +751,20 @@ class UserChat : Fragment() {
         }
 
         isRecording = true
+        updateMicUI(true)
         Toast.makeText(requireContext(), "Recording started...", Toast.LENGTH_SHORT).show()
     }
+    fun updateMicUI(recording: Boolean) {
+        mic?.setColorFilter(
+            ContextCompat.getColor(requireContext(),
+                if (recording) android.R.color.holo_red_dark else android.R.color.black
+            ),
+            PorterDuff.Mode.SRC_IN
+        )
+    }
+
+
+
 
     suspend fun uploadVoiceToCloudinary(file: File): String? =
         suspendCancellableCoroutine { cont ->
@@ -797,6 +824,8 @@ class UserChat : Fragment() {
             }
             mediaRecorder = null
             isRecording = false
+            updateMicUI(false)
+
 
             val receiverId = currentReceiverId ?: return
             val audioFile = File(audioFilePath ?: return)

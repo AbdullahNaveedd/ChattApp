@@ -43,8 +43,11 @@ class Videocall : Fragment() {
     private var isCameraEnabled = true
     private var isMicEnabled = true
     private var eglBase: EglBase? = null
+    private var currentRecieverName: String? = null
     private var hasParticipantJoined = false
     private var isRenderersInitialized = false
+    private var receiverName: String? = null
+
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 1001
@@ -58,6 +61,7 @@ class Videocall : Fragment() {
         arguments?.let {
             senderId = it.getString("senderId")
             receiverId = it.getString("receiverId")
+            receiverName =it.getString("receiverName")
             roomId = it.getString("roomId")
             isCallInitiator = it.getBoolean("isCallInitiator", false)
             currentRoomId = it.getString("roomId")
@@ -67,6 +71,7 @@ class Videocall : Fragment() {
             Log.d("VideocallDebug", "senderId: $senderId")
             Log.d("VideocallDebug", "receiverId: $receiverId")
             Log.d("VideocallDebug", "currentUserId: $currentUserId")
+            Log.d("VideoCallDebug", "receiverName: $receiverName")
             Log.d("VideocallDebug", "roomId: $currentRoomId")
             Log.d("VideocallDebug", "isCallInitiator: $isCallInitiator")
             Log.d("VideocallDebug", "callType: $callType")
@@ -216,10 +221,11 @@ class Videocall : Fragment() {
             callManager.initiateCall(
                 senderId = currentUserId!!,
                 receiverId = receiverId!!,
+                recieverName = receiverName,
                 onRoomCreated = { roomId, token ->
                     currentRoomId = roomId
                     Log.d("Videocall", "New room created: $roomId")
-                    updateCallStatus("Video calling $receiverId...")
+                    updateCallStatus("Video calling $receiverName...")
                     setupLiveKit(view, roomId, token, currentUserId!!)
                 },
                 onError = { error ->
@@ -246,10 +252,11 @@ class Videocall : Fragment() {
                     callManager.initiateCall(
                         senderId = currentUserId!!,
                         receiverId = receiverId!!,
+                        recieverName = receiverName,
                         onRoomCreated = { newRoomId, token ->
                             currentRoomId = newRoomId
                             Log.d("Videocall", "Fallback room created: $newRoomId")
-                            updateCallStatus("Video calling $receiverId...")
+                            updateCallStatus("Video calling $receiverName...")
                             setupLiveKit(view, newRoomId, token, currentUserId!!)
                         },
                         onError = { fallbackError ->
@@ -303,9 +310,9 @@ class Videocall : Fragment() {
 
                         if (isCallInitiator) {
                             if (hasParticipantJoined) {
-                                updateCallStatus("Video call with $receiverId")
+                                updateCallStatus("Video call with $receiverName")
                             } else {
-                                updateCallStatus("Waiting for $receiverId to join...")
+                                updateCallStatus("Waiting for $receiverName to join...")
                             }
                         } else {
                             updateCallStatus("Connected to video call with $senderId")
@@ -329,7 +336,7 @@ class Videocall : Fragment() {
                             remoteRenderer.visibility = View.VISIBLE
 
                             if (isCallInitiator) {
-                                updateCallStatus("Video call with $receiverId")
+                                updateCallStatus("Video call with $receiverName")
                             } else {
                                 updateCallStatus("Video call with $senderId")
                             }
@@ -401,6 +408,7 @@ class Videocall : Fragment() {
                 arguments = Bundle().apply {
                     putString("senderId", senderId)
                     putString("receiverId", receiverId)
+                    putString("receiverName", receiverName)
                 }
             }
             replaceFragment(fragment)

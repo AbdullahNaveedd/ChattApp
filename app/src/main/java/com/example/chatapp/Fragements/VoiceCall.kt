@@ -46,6 +46,7 @@ class VoiceCall : Fragment() {
 
     private var senderId: String? = null
     private var receiverId: String? = null
+    private var receiverName: String? = null
     private var currentUserId: String? = null
     private var isCallInitiator: Boolean = false
     private lateinit var liveKitManager: LiveKitManager
@@ -67,6 +68,7 @@ class VoiceCall : Fragment() {
         arguments?.let {
             senderId = it.getString("senderId")
             receiverId = it.getString("receiverId")
+            receiverName =it.getString("receiverName")
             isCallInitiator = it.getBoolean("isCallInitiator", false)
             currentRoomId = it.getString("roomId")
 
@@ -74,6 +76,7 @@ class VoiceCall : Fragment() {
             Log.d("VoiceCallDebug", "senderId: $senderId")
             Log.d("VoiceCallDebug", "receiverId: $receiverId")
             Log.d("VoiceCallDebug", "currentUserId: $currentUserId")
+            Log.d("VoiceCallDebug", "receiverName: $receiverName")
             Log.d("VoiceCallDebug", "roomId: $currentRoomId")
             Log.d("VoiceCallDebug", "isCallInitiator: $isCallInitiator")
 
@@ -139,9 +142,12 @@ class VoiceCall : Fragment() {
             callManager.initiateCall(
                 senderId = currentUserId!!,
                 receiverId = receiverId!!,
+                recieverName = receiverName,
                 onRoomCreated = { roomId, token ->
                     currentRoomId = roomId
-                    updateCallStatus("Calling $receiverId...")
+                    arguments?.getString("receiverName")?.let {
+                        updateCallStatus("Calling $it...")
+                    }
                     observeCallStatus(roomId)
                     setupLiveKit(view, roomId, token, currentUserId!!)
                 },
@@ -239,12 +245,12 @@ class VoiceCall : Fragment() {
                         // Show appropriate status based on role
                         if (isCallInitiator) {
                             if (hasParticipantJoined) {
-                                updateCallStatus("In call with $receiverId")
+                                updateCallStatus("In call with $receiverName")
                             } else {
-                                updateCallStatus("Waiting for $receiverId to join...")
+                                updateCallStatus("Waiting for $receiverName to join...")
                             }
                         } else {
-                            updateCallStatus("Connected to call with $senderId")
+                            updateCallStatus("Connected to call with $receiverName")
                         }
 
                         Log.d("VoiceCall", "Voice call connected successfully")
@@ -266,7 +272,7 @@ class VoiceCall : Fragment() {
 
                             if (isCallInitiator) {
                                 // Caller sees "In call with [receiver]"
-                                updateCallStatus("In call with $receiverId")
+                                updateCallStatus("In call with $receiverName")
                             } else {
                                 // Receiver sees "In call with [caller]"
                                 updateCallStatus("In call with $senderId")
@@ -387,6 +393,8 @@ class VoiceCall : Fragment() {
                 arguments = Bundle().apply {
                     putString("senderId", senderId)
                     putString("receiverId", receiverId)
+                    putString("receiverName", receiverName)
+
                 }
             }
             replaceFragment(fragment)
