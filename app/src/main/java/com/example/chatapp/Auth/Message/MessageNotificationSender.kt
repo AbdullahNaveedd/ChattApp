@@ -17,7 +17,7 @@ object MessageNotificationSender {
     ) {
         NotificationTokenManager.getTokenForUser(receiverId) { token ->
             if (token != null) {
-                val url = "http://192.168.253.145:3000/message"
+                val url = "http://192.168.244.145:3000/message"
 
                 val requestBody = JSONObject().apply {
                     put("token", token)

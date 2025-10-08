@@ -49,6 +49,10 @@ dependencies {
     implementation ("androidx.navigation:navigation-fragment-ktx:2.7.7")
     implementation ("androidx.navigation:navigation-ui-ktx:2.7.7")
     implementation ("com.github.bumptech.glide:glide:4.16.0")
+
+//    implementation("com.google.firebase:firebase-crashlytics:19.2.1")
+//    implementation("com.google.firebase:firebase-analytics:22.0.2")
+
     implementation(libs.firebase.database.ktx)
     implementation(libs.androidx.espresso.core)
     implementation(libs.play.services.cast.tv)

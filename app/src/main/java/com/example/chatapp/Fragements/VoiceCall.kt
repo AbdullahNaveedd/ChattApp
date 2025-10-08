@@ -1,8 +1,13 @@
 package com.example.chatapp.Fragements
 
 import android.Manifest.permission.RECORD_AUDIO
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.IBinder
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -14,6 +19,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.example.chatapp.Activity.VoiceCallService
 import com.example.chatapp.Call.CallManager
 import com.example.chatapp.Call.CallRoom
 import com.example.chatapp.LiveKt.LiveKitManager
@@ -56,8 +62,33 @@ class VoiceCall : Fragment() {
     private var hasParticipantJoined = false
     private val database = FirebaseDatabase.getInstance().reference
     var isSwitchingToVideo: Boolean = false
+    private var isFromService: Boolean = false
 
+    // Service related
+    private var voiceCallService: VoiceCallService? = null
+    private var isServiceBound = false
 
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val binder = service as VoiceCallService.VoiceCallBinder
+            voiceCallService = binder.getService()
+            isServiceBound = true
+            Log.d("VoiceCall", "Service connected")
+
+            // If service already has an active call, get the LiveKitManager
+            voiceCallService?.getLiveKitManager()?.let { manager ->
+                liveKitManager = manager
+                isCallActive = true
+                updateUIForActiveCall()
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            voiceCallService = null
+            isServiceBound = false
+            Log.d("VoiceCall", "Service disconnected")
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,9 +99,10 @@ class VoiceCall : Fragment() {
         arguments?.let {
             senderId = it.getString("senderId")
             receiverId = it.getString("receiverId")
-            receiverName =it.getString("receiverName")
+            receiverName = it.getString("receiverName")
             isCallInitiator = it.getBoolean("isCallInitiator", false)
             currentRoomId = it.getString("roomId")
+            isFromService = it.getBoolean("from_service", false)
 
             Log.d("VoiceCallDebug", "Arguments received:")
             Log.d("VoiceCallDebug", "senderId: $senderId")
@@ -79,6 +111,7 @@ class VoiceCall : Fragment() {
             Log.d("VoiceCallDebug", "receiverName: $receiverName")
             Log.d("VoiceCallDebug", "roomId: $currentRoomId")
             Log.d("VoiceCallDebug", "isCallInitiator: $isCallInitiator")
+            Log.d("VoiceCallDebug", "isFromService: $isFromService")
 
             if (currentRoomId == null) {
                 Log.e("VoiceCallDebug", "Room ID is null!")
@@ -86,6 +119,11 @@ class VoiceCall : Fragment() {
         }
 
         callManager = CallManager()
+
+        // Check if service is already running
+        if (VoiceCallService.isServiceRunning || isFromService) {
+            bindToService()
+        }
     }
 
     override fun onCreateView(
@@ -104,12 +142,27 @@ class VoiceCall : Fragment() {
 
         // Show the appropriate name based on role
         if (isCallInitiator) {
-            imgname.text = receiverId ?: "Unknown"
+            imgname.text = receiverName ?: "Unknown"
         } else {
             imgname.text = senderId ?: "Unknown"
         }
-//        videov.visibility=View.GONE
-        initiateOrJoinCall(view)
+
+        // If returning from service or service is running, just update UI
+        if (isFromService && VoiceCallService.isServiceRunning) {
+            Log.d("VoiceCall", "Returning from service, updating UI")
+            updateUIForActiveCall()
+        } else if (VoiceCallService.isServiceRunning && voiceCallService?.isCallActive() == true) {
+            Log.d("VoiceCall", "Service already running, updating UI")
+            updateUIForActiveCall()
+        } else {
+            Log.d("VoiceCall", "Starting new call")
+            initiateOrJoinCall(view)
+        }
+    }
+
+    private fun bindToService() {
+        val intent = Intent(requireContext(), VoiceCallService::class.java)
+        requireContext().bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
     private fun initializeViews(view: View) {
@@ -121,6 +174,15 @@ class VoiceCall : Fragment() {
         cancelv = view.findViewById(R.id.cancel)
         imgname = view.findViewById(R.id.imgname)
         voiceimg = view.findViewById(R.id.voiceimg)
+    }
+
+    private fun updateUIForActiveCall() {
+        activity?.runOnUiThread {
+            isCallActive = true
+            val displayName = if (isCallInitiator) receiverName else senderId
+            imgname.text = "In call with $displayName"
+            Log.d("VoiceCall", "UI updated for active call")
+        }
     }
 
     private fun initiateOrJoinCall(view: View) {
@@ -200,7 +262,6 @@ class VoiceCall : Fragment() {
         })
     }
 
-
     private fun updateCallStatus(status: String) {
         activity?.runOnUiThread {
             imgname.text = status
@@ -229,7 +290,7 @@ class VoiceCall : Fragment() {
                 serverUrl = "wss://chatapp-gubdfc71.livekit.cloud",
                 token = token,
                 roomName = roomId,
-                participantName = participantName // Use the correct participant name
+                participantName = participantName
             )
 
             liveKitManager.connect(
@@ -241,6 +302,9 @@ class VoiceCall : Fragment() {
                         liveKitManager.setRenderers(localRenderer, remoteRenderer)
                         liveKitManager.enableAudio(true)
                         liveKitManager.enableVideo(false)
+
+                        // Start the foreground service
+                        startVoiceCallService()
 
                         // Show appropriate status based on role
                         if (isCallInitiator) {
@@ -266,15 +330,12 @@ class VoiceCall : Fragment() {
                     activity?.runOnUiThread {
                         Log.d("VoiceCall", "Participant joined: $joinedParticipantName")
 
-                        // Only update status for the other participant (not self)
                         if (joinedParticipantName != participantName) {
                             hasParticipantJoined = true
 
                             if (isCallInitiator) {
-                                // Caller sees "In call with [receiver]"
                                 updateCallStatus("In call with $receiverName")
                             } else {
-                                // Receiver sees "In call with [caller]"
                                 updateCallStatus("In call with $senderId")
                             }
 
@@ -286,11 +347,9 @@ class VoiceCall : Fragment() {
                     activity?.runOnUiThread {
                         Log.d("VoiceCall", "Participant left: $leftParticipantName")
 
-                        // If the other participant left, end the call
                         if (leftParticipantName != participantName) {
                             hasParticipantJoined = false
                             updateCallStatus("$leftParticipantName left the call")
-                            // Auto-end call after a delay
                             view.postDelayed({
                                 endCall()
                             }, 2000)
@@ -302,6 +361,25 @@ class VoiceCall : Fragment() {
             Log.e("VoiceCall", "Error setting up LiveKit", e)
             showErrorAndReturn("Failed to setup call: ${e.message}")
         }
+    }
+
+    private fun startVoiceCallService() {
+        val serviceIntent = Intent(requireContext(), VoiceCallService::class.java).apply {
+            putExtra("roomId", currentRoomId)
+            putExtra("participantName", currentUserId)
+            putExtra("receiverName", receiverName)
+            putExtra("senderId", senderId)
+            putExtra("receiverId", receiverId)
+            putExtra("isCallInitiator", isCallInitiator)
+        }
+
+        requireContext().startForegroundService(serviceIntent)
+        bindToService()
+
+        // Set LiveKitManager in service after binding
+        view?.postDelayed({
+            voiceCallService?.setLiveKitManager(liveKitManager)
+        }, 500)
     }
 
     private fun requestMicPermission() {
@@ -325,9 +403,12 @@ class VoiceCall : Fragment() {
 
     private fun setupClickListeners() {
         micv.setOnClickListener {
-            if (::liveKitManager.isInitialized && liveKitManager.isConnected()) {
+            // Use service's LiveKitManager if available, otherwise use local one
+            val manager = voiceCallService?.getLiveKitManager() ?: liveKitManager
+
+            if (::liveKitManager.isInitialized && manager.isConnected()) {
                 try {
-                    val isMuted = liveKitManager.toggleMicrophone()
+                    val isMuted = manager.toggleMicrophone()
                     micv.setImageResource(if (isMuted) R.drawable.callredicon else R.drawable.micv)
                     Log.d("VoiceCall", if (isMuted) "Mic Muted" else "Mic Unmuted")
                 } catch (e: Exception) {
@@ -337,9 +418,11 @@ class VoiceCall : Fragment() {
         }
 
         volumev.setOnClickListener {
-            if (::liveKitManager.isInitialized && liveKitManager.isConnected()) {
+            val manager = voiceCallService?.getLiveKitManager() ?: liveKitManager
+
+            if (::liveKitManager.isInitialized && manager.isConnected()) {
                 try {
-                    val isSpeakerOn = liveKitManager.toggleSpeaker()
+                    val isSpeakerOn = manager.toggleSpeaker()
                     volumev.setImageResource(if (isSpeakerOn) R.drawable.volumev else R.drawable.callredicon)
                     Log.d("VoiceCall", if (isSpeakerOn) "Speaker On" else "Speaker Off")
                 } catch (e: Exception) {
@@ -375,12 +458,9 @@ class VoiceCall : Fragment() {
                             putBoolean("isSwitchingFromVoice", true)
                         }
                     }
-//                    isSwitchingToVideo = false
 
-                    if (::liveKitManager.isInitialized) {
-                        liveKitManager.disconnect()
-
-                    }
+                    // End the voice call service when switching to video
+                    voiceCallService?.endCall()
 
                     replaceFragment(fragment)
                 }
@@ -388,13 +468,15 @@ class VoiceCall : Fragment() {
                     Log.e("CallSwitch", "Failed to update isNewCall flag", it)
                 }
         }
+
         messagev.setOnClickListener {
+            // Don't end the call, just navigate to chat
+            // The service will keep the call active
             val fragment = UserChat().apply {
                 arguments = Bundle().apply {
                     putString("senderId", senderId)
                     putString("receiverId", receiverId)
                     putString("receiverName", receiverName)
-
                 }
             }
             replaceFragment(fragment)
@@ -405,13 +487,18 @@ class VoiceCall : Fragment() {
         try {
             isCallActive = false
 
-            if (::liveKitManager.isInitialized) {
-                liveKitManager.disconnect()
-            }
+            // End call through service if bound, otherwise handle locally
+            if (isServiceBound && voiceCallService != null) {
+                voiceCallService?.endCall()
+            } else {
+                if (::liveKitManager.isInitialized) {
+                    liveKitManager.disconnect()
+                }
 
-            currentRoomId?.let { roomId ->
-                currentUserId?.let { userId ->
-                    callManager.endCall(roomId, userId)
+                currentRoomId?.let { roomId ->
+                    currentUserId?.let { userId ->
+                        callManager.endCall(roomId, userId)
+                    }
                 }
             }
 
@@ -444,7 +531,7 @@ class VoiceCall : Fragment() {
             } else {
                 fragmentManager.beginTransaction()
                     .replace(R.id.fragment_container_view, fragment)
-                    .commitAllowingStateLoss() // Safe fallback
+                    .commitAllowingStateLoss()
             }
 
         } catch (e: Exception) {
@@ -455,14 +542,23 @@ class VoiceCall : Fragment() {
     override fun onDestroy() {
         super.onDestroy()
         try {
-            if (::liveKitManager.isInitialized) {
-                liveKitManager.disconnect()
+            // Unbind from service but don't end the call
+            if (isServiceBound) {
+                requireContext().unbindService(serviceConnection)
+                isServiceBound = false
             }
 
-            if (isCallActive) {
-                currentRoomId?.let { roomId ->
-                    currentUserId?.let { userId ->
-                        callManager.endCall(roomId, userId)
+            // Only disconnect if we're not switching to video and service isn't handling the call
+            if (!isSwitchingToVideo && !VoiceCallService.isServiceRunning) {
+                if (::liveKitManager.isInitialized) {
+                    liveKitManager.disconnect()
+                }
+
+                if (isCallActive) {
+                    currentRoomId?.let { roomId ->
+                        currentUserId?.let { userId ->
+                            callManager.endCall(roomId, userId)
+                        }
                     }
                 }
             }
@@ -473,11 +569,15 @@ class VoiceCall : Fragment() {
 
     override fun onPause() {
         super.onPause()
-        Log.d("VoiceCall", "Fragment paused")
+        Log.d("VoiceCall", "Fragment paused - Service will handle call")
     }
 
     override fun onResume() {
         super.onResume()
         Log.d("VoiceCall", "Fragment resumed")
+
+        if (VoiceCallService.isServiceRunning && !isServiceBound) {
+            bindToService()
+        }
     }
 }

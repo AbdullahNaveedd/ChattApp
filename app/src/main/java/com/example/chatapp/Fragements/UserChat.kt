@@ -13,8 +13,6 @@ import android.media.MediaRecorder
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
@@ -27,10 +25,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -56,6 +56,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -74,7 +80,6 @@ class UserChat : Fragment() {
     private lateinit var editText: TextInputEditText
     private var mic: ImageView? = null
 
-
     val userChatList = mutableListOf<UserChatDataClass>()
     private lateinit var adapter: UserChatAdapter
     private lateinit var camLauncher: ActivityResultLauncher<Intent>
@@ -82,6 +87,7 @@ class UserChat : Fragment() {
     private var mediaRecorder: MediaRecorder? = null
     private var audioFilePath: String? = null
     private var isRecording = false
+    private var loadingDialog: AlertDialog? = null
 
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
@@ -112,8 +118,7 @@ class UserChat : Fragment() {
 
         initializeCurrentUser()
 
-
-        videobtn.visibility=View.GONE
+        videobtn.visibility = View.GONE
     }
 
     private fun initializeCurrentUser() {
@@ -138,13 +143,10 @@ class UserChat : Fragment() {
         editText = view.findViewById(R.id.edittextmsg)
         recyclerViews = view.findViewById(R.id.userchatrecyclerview)
 
-
         val receiverName = arguments?.getString("receiverName") ?: "Unknown"
         callname.text = receiverName
         currentReceiverId = arguments?.getString("receiverId")
         recieverName = arguments?.getString("receiverName") ?: "Unknown"
-
-
 
         val receiverImage = arguments?.getString("receiverImage") ?: ""
         Glide.with(requireContext())
@@ -160,11 +162,8 @@ class UserChat : Fragment() {
                 }
             }
         }
+    }
 
-//
-//        currentReceiverId = arguments?.getString("receiverId")
-
-}
     private fun openFullScreenImage(context: Context, imageUrl: String) {
         val intent = Intent(context, FullScreenActivity::class.java).apply {
             putExtra(FullScreenActivity.EXTRA_IMAGE_URL, imageUrl)
@@ -185,7 +184,12 @@ class UserChat : Fragment() {
 
         videobtn.setOnClickListener {
             NotificationTokenManager.getToken()?.let { token ->
-                currentUserId?.let { it1 -> NotificationTokenManager.saveTokenToFirestore(it1, token) }
+                currentUserId?.let { it1 ->
+                    NotificationTokenManager.saveTokenToFirestore(
+                        it1,
+                        token
+                    )
+                }
             }
 
             val callManager = CallManager()
@@ -201,7 +205,7 @@ class UserChat : Fragment() {
                             putString("receiverName", recieverName)
                             putString("roomId", roomId)
                             putBoolean("isCallInitiator", true)
-                            putBoolean("isIncomingCall", false) // initiator is not "incoming"
+                            putBoolean("isIncomingCall", false)
                         }
                     }
                     navigateToFragment(fragment)
@@ -233,14 +237,15 @@ class UserChat : Fragment() {
                             putString("receiverName", recieverName)
                             putString("roomId", roomId)
                             putBoolean("isCallInitiator", true)
-                            putBoolean("isIncomingCall", false) // initiator is not "incoming"
+                            putBoolean("isIncomingCall", false)
                         }
                     }
                     navigateToFragment(fragment)
                 },
                 onError = { error ->
                     Log.e("VoiceCall", "Error initiating call: $error")
-                    Toast.makeText(requireContext(), "Call failed: $error", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Call failed: $error", Toast.LENGTH_SHORT)
+                        .show()
                 }
             )
         }
@@ -261,12 +266,6 @@ class UserChat : Fragment() {
 
         cam?.setOnClickListener {
             openImagePicker()
-            MessageNotificationSender.sendMessageNotification(
-                context = requireContext(),
-                senderId = currentUserId ?: return@setOnClickListener,
-                receiverId = currentReceiverId ?: return@setOnClickListener,
-                messageType = "image",
-            )
         }
 
         mic?.setOnClickListener {
@@ -287,9 +286,6 @@ class UserChat : Fragment() {
             override fun afterTextChanged(s: Editable?) {}
         })
     }
-
-
-
 
     private fun navigateToFragment(fragment: Fragment) {
         val fragmentTransaction =
@@ -437,7 +433,6 @@ class UserChat : Fragment() {
         }
     }
 
-
     suspend fun uploadFileToCloudinarySuspended(context: Context, file: File): String? =
         suspendCancellableCoroutine { continuation ->
 
@@ -475,7 +470,6 @@ class UserChat : Fragment() {
                 .dispatch()
         }
 
-
     private fun handleSelectedImage(uri: Uri, receiverId: String) {
         CoroutineScope(Dispatchers.IO).launch {
             val file = uriToFile(uri, requireContext())
@@ -489,12 +483,13 @@ class UserChat : Fragment() {
             }
 
             withContext(Dispatchers.Main) {
-                Toast.makeText(requireContext(), "Uploading image...", Toast.LENGTH_SHORT).show()
+                showLoadingDialog("Uploading image...")
             }
 
             val uploadedUrl = uploadFileToCloudinarySuspended(requireContext(), file)
 
             withContext(Dispatchers.Main) {
+                hideLoadingDialog()
                 if (uploadedUrl != null) {
                     Log.d("Cloudinary", "URL: $uploadedUrl")
                     sendMessage(
@@ -502,6 +497,13 @@ class UserChat : Fragment() {
                         messageContent = "📷 Photo",
                         messageType = MessageType.IMAGE,
                         mediaUrl = uploadedUrl
+                    )
+                    // Send notification after message is sent
+                    MessageNotificationSender.sendMessageNotification(
+                        context = requireContext(),
+                        senderId = currentUserId ?: return@withContext,
+                        receiverId = receiverId,
+                        messageType = "image"
                     )
                 } else {
                     Toast.makeText(requireContext(), "Image upload failed", Toast.LENGTH_SHORT)
@@ -513,7 +515,6 @@ class UserChat : Fragment() {
         }
     }
 
-
     private suspend fun sendMessage(
         receiverId: String,
         messageContent: String,
@@ -521,7 +522,10 @@ class UserChat : Fragment() {
         mediaUrl: String?
     ) {
         if (currentChatId == null || currentUserId.isNullOrEmpty()) {
-            Log.w("UserChat", "Cannot send message - chat not initialized: chatId=$currentChatId, userId=$currentUserId")
+            Log.w(
+                "UserChat",
+                "Cannot send message - chat not initialized: chatId=$currentChatId, userId=$currentUserId"
+            )
             return
         }
 
@@ -535,7 +539,6 @@ class UserChat : Fragment() {
             "isRead" to false
         )
 
-        // Update read status
         val chatRef = db.collection("Chats").document(currentChatId!!)
         chatRef.update("isReadStatus.${receiverId}", false)
 
@@ -545,17 +548,16 @@ class UserChat : Fragment() {
         )
         Log.d("UserChat", "Message data: $messageData")
 
-        // Add message to subcollection
         db.collection("Chats")
             .document(currentChatId!!)
             .collection("messages")
             .add(messageData)
             .await()
 
-        // Update chat document with last message info
         val lastMessageText = when (messageType) {
             MessageType.TEXT -> messageContent
             MessageType.IMAGE -> "📷 Image"
+            MessageType.VIDEO -> "🎥 Video"
             MessageType.VOICE -> "🎵 Voice message"
         }
 
@@ -572,7 +574,6 @@ class UserChat : Fragment() {
 
         Log.d("UserChat", "Message sent successfully to chat: $currentChatId")
     }
-
 
     private fun loadChatMessages() {
         if (currentChatId == null) {
@@ -632,6 +633,7 @@ class UserChat : Fragment() {
                             val messageType = when (messageTypeString.uppercase()) {
                                 "TEXT" -> MessageType.TEXT
                                 "IMAGE" -> MessageType.IMAGE
+                                "VIDEO" -> MessageType.VIDEO
                                 "VOICE" -> MessageType.VOICE
                                 else -> MessageType.TEXT
                             }
@@ -642,7 +644,8 @@ class UserChat : Fragment() {
                                 sendMessage = if (isSentMessage) {
                                     when (messageType) {
                                         MessageType.TEXT -> message
-                                        MessageType.IMAGE -> message // Keep the original message (like "📷 Photo")
+                                        MessageType.IMAGE -> message
+                                        MessageType.VIDEO -> message
                                         MessageType.VOICE -> message
                                     }
                                 } else null,
@@ -650,7 +653,8 @@ class UserChat : Fragment() {
                                 recieveMessage = if (!isSentMessage) {
                                     when (messageType) {
                                         MessageType.TEXT -> message
-                                        MessageType.IMAGE -> message // Keep the original message (like "📷 Photo")
+                                        MessageType.IMAGE -> message
+                                        MessageType.VIDEO -> message
                                         MessageType.VOICE -> message
                                     }
                                 } else null,
@@ -660,7 +664,7 @@ class UserChat : Fragment() {
                                 recieverImage = arguments?.getString("receiverImage"),
                                 time = time,
                                 messageType = messageType,
-                                mediaUrl = mediaUrl, // This is the key - make sure mediaUrl is passed
+                                mediaUrl = mediaUrl,
                                 senderId = senderId
                             )
 
@@ -690,10 +694,9 @@ class UserChat : Fragment() {
                     val data = result.data
                     val receiverId = currentReceiverId ?: return@registerForActivityResult
 
-                    val selectedImageUri: Uri? = data?.data
-                    var finalUri: Uri? = selectedImageUri
+                    val selectedUri: Uri? = data?.data
+                    var finalUri: Uri? = selectedUri
 
-                    // If taken from camera, convert bitmap to Uri
                     if (finalUri == null) {
                         val bitmap = data?.extras?.get("data") as? Bitmap
                         if (bitmap != null) {
@@ -708,7 +711,24 @@ class UserChat : Fragment() {
                     }
 
                     finalUri?.let { uri ->
-                        handleSelectedImage(uri, receiverId)
+                        val mimeType = requireContext().contentResolver.getType(uri)
+                        Log.d("UserChat", "Selected file type: $mimeType")
+
+                        when {
+                            mimeType?.startsWith("video/") == true -> {
+                                handleSelectedVideo(uri, receiverId)
+                            }
+                            mimeType?.startsWith("image/") == true -> {
+                                handleSelectedImage(uri, receiverId)
+                            }
+                            else -> {
+                                Toast.makeText(
+                                    requireContext(),
+                                    "Unsupported file type",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
                     }
                 }
             }
@@ -716,14 +736,139 @@ class UserChat : Fragment() {
 
     private fun openImagePicker() {
         val cameraIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        val galleryIntent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-        val chooser = Intent.createChooser(galleryIntent, "Select Image")
+        val galleryIntent = Intent(Intent.ACTION_PICK).apply {
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("image/*", "video/*"))
+        }
+        val chooser = Intent.createChooser(galleryIntent, "Select Image or Video")
         chooser.putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(cameraIntent))
         camLauncher.launch(chooser)
     }
 
+    private fun handleSelectedVideo(videoUri: Uri, receiverId: String) {
+        lifecycleScope.launch {
+            try {
+                showLoadingDialog("Uploading video...")
+
+                val videoUrl = uploadVideoToCloudinary(videoUri)
+
+                hideLoadingDialog()
+
+                if (videoUrl != null) {
+                    sendMessage(receiverId, "🎥 Video", MessageType.VIDEO, videoUrl)
+                    // Send notification after message is sent
+                    MessageNotificationSender.sendMessageNotification(
+                        context = requireContext(),
+                        senderId = currentUserId ?: return@launch,
+                        receiverId = receiverId,
+                        messageType = "video"
+                    )
+                } else {
+                    Toast.makeText(requireContext(), "Failed to upload video", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            } catch (e: Exception) {
+                hideLoadingDialog()
+                Log.e("UserChat", "Error handling video", e)
+                Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private suspend fun uploadVideoToCloudinary(videoUri: Uri): String? =
+        withContext(Dispatchers.IO) {
+            try {
+                val cloudName = "dlfn2oyqx"
+                val uploadPreset = "chatapp_preset"
+
+                val inputStream = requireContext().contentResolver.openInputStream(videoUri)
+                val videoBytes = inputStream?.readBytes()
+                inputStream?.close()
+
+                if (videoBytes == null) {
+                    Log.e("UserChat", "Failed to read video bytes")
+                    return@withContext null
+                }
+
+                val requestBody = MultipartBody.Builder()
+                    .setType(MultipartBody.FORM)
+                    .addFormDataPart(
+                        "file", "video.mp4",
+                        videoBytes.toRequestBody("video/*".toMediaTypeOrNull())
+                    )
+                    .addFormDataPart("upload_preset", uploadPreset)
+                    .addFormDataPart("resource_type", "video")
+                    .build()
+
+                val request = Request.Builder()
+                    .url("https://api.cloudinary.com/v1_1/$cloudName/video/upload")
+                    .post(requestBody)
+                    .build()
+
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(60, TimeUnit.SECONDS)
+                    .writeTimeout(60, TimeUnit.SECONDS)
+                    .readTimeout(60, TimeUnit.SECONDS)
+                    .build()
+
+                val response = client.newCall(request).execute()
+
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    val jsonObject = JSONObject(responseBody ?: "")
+                    val secureUrl = jsonObject.getString("secure_url")
+
+                    Log.d("UserChat", "Video uploaded successfully: $secureUrl")
+                    return@withContext secureUrl
+                } else {
+                    Log.e("UserChat", "Upload failed: ${response.code} - ${response.message}")
+                    return@withContext null
+                }
+            } catch (e: Exception) {
+                Log.e("UserChat", "Error uploading video to Cloudinary", e)
+                return@withContext null
+            }
+        }
+
+    private fun showLoadingDialog(message: String) {
+        activity?.runOnUiThread {
+            val builder = AlertDialog.Builder(requireContext())
+            val dialogView = layoutInflater.inflate(R.layout.dialog, null)
+
+            dialogView.findViewById<TextView>(R.id.loadingMessage)?.text = message
+
+            builder.setView(dialogView)
+            builder.setCancelable(false)
+            loadingDialog = builder.create()
+            loadingDialog?.show()
+        }
+    }
+
+    private fun hideLoadingDialog() {
+        activity?.runOnUiThread {
+            loadingDialog?.dismiss()
+            loadingDialog = null
+        }
+    }
+
+    private fun updateLastMessage(message: String) {
+        if (currentChatId == null) return
+
+        db.collection("Chats")
+            .document(currentChatId!!)
+            .update(
+                mapOf(
+                    "lastMessage" to message,
+                    "lastMessageTime" to FieldValue.serverTimestamp()
+                )
+            )
+    }
+
     private fun handleVoiceRecording() {
-        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.RECORD_AUDIO)
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.RECORD_AUDIO
+            )
             != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
@@ -754,17 +899,16 @@ class UserChat : Fragment() {
         updateMicUI(true)
         Toast.makeText(requireContext(), "Recording started...", Toast.LENGTH_SHORT).show()
     }
+
     fun updateMicUI(recording: Boolean) {
         mic?.setColorFilter(
-            ContextCompat.getColor(requireContext(),
+            ContextCompat.getColor(
+                requireContext(),
                 if (recording) android.R.color.holo_red_dark else android.R.color.black
             ),
             PorterDuff.Mode.SRC_IN
         )
     }
-
-
-
 
     suspend fun uploadVoiceToCloudinary(file: File): String? =
         suspendCancellableCoroutine { cont ->
@@ -783,7 +927,7 @@ class UserChat : Fragment() {
             try {
                 MediaManager.get().upload(file.absolutePath)
                     .unsigned("chatapp_preset")
-                    .option("resource_type", "video") // ⬅ important for .3gp
+                    .option("resource_type", "video")
                     .callback(object : UploadCallback {
                         override fun onStart(requestId: String?) {}
 
@@ -826,7 +970,6 @@ class UserChat : Fragment() {
             isRecording = false
             updateMicUI(false)
 
-
             val receiverId = currentReceiverId ?: return
             val audioFile = File(audioFilePath ?: return)
 
@@ -838,13 +981,13 @@ class UserChat : Fragment() {
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(requireContext(), "Uploading voice...", Toast.LENGTH_SHORT)
-                            .show()
+                        showLoadingDialog("Uploading voice...")
                     }
 
                     val mediaUrl = uploadVoiceToCloudinary(audioFile)
 
                     withContext(Dispatchers.Main) {
+                        hideLoadingDialog()
                         if (mediaUrl != null) {
                             sendMessage(receiverId, "🎵 Voice message", MessageType.VOICE, mediaUrl)
                             Toast.makeText(requireContext(), "Voice sent", Toast.LENGTH_SHORT)
@@ -863,6 +1006,7 @@ class UserChat : Fragment() {
                 } catch (e: Exception) {
                     Log.e("VoiceUpload", "Exception: ${e.message}", e)
                     withContext(Dispatchers.Main) {
+                        hideLoadingDialog()
                         Toast.makeText(
                             requireContext(),
                             "Error uploading voice",
@@ -874,6 +1018,12 @@ class UserChat : Fragment() {
         } catch (e: Exception) {
             Log.e("Recorder", "Stop failed: ${e.message}", e)
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        adapter.cleanup()
+        hideLoadingDialog()
     }
 
     companion object {

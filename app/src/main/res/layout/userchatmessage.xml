@@ -28,6 +28,16 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:ignore="MissingConstraints" />
 
+    <VideoView
+        android:id="@+id/sendervideo"
+        android:layout_width="@dimen/_250sdp"
+        android:layout_height="@dimen/_180sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        android:layout_marginEnd="@dimen/_2sdp"
+        android:padding="@dimen/_1sdp"
+        android:keepScreenOn="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <ImageView
         android:id="@+id/senderimage"
@@ -167,6 +177,18 @@
         app:layout_constraintEnd_toEndOf="@id/viewbox"
         app:layout_constraintTop_toBottomOf="@+id/Barrier"
         tools:ignore="MissingConstraints" />
+
+    <VideoView
+        android:id="@+id/rsendervideo"
+        android:layout_width="@dimen/_250sdp"
+        android:layout_height="@dimen/_180sdp"
+        android:layout_marginTop="@dimen/_20sdp"
+        android:layout_marginEnd="@dimen/_2sdp"
+        android:padding="@dimen/_1sdp"
+        android:keepScreenOn="true"
+        app:layout_constraintStart_toStartOf="@+id/recieverimage"
+        app:layout_constraintTop_toBottomOf="@+id/revievermessagename"
+        />
 
     <ImageView
         android:id="@+id/rsenderimage"

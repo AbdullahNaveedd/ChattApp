@@ -1,5 +1,6 @@
 package com.example.chatapp.Activity
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
@@ -22,6 +23,8 @@ class Fragement_Activity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_fragement2)
+        handleIntent(intent)
+
         val showIncomingCallDialog = intent.getBooleanExtra("show_incoming_call_dialog", false)
         if (showIncomingCallDialog) {
             showIncomingCallDialog()
@@ -132,6 +135,38 @@ class Fragement_Activity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.fragment_container_view, Home())
             .commit()
+    }
+
+    private fun handleIntent(intent: Intent) {
+        if (intent.getBooleanExtra("show_call_fragment", false)) {
+            val callType = intent.getStringExtra("call_fragment_type")
+            val senderId = intent.getStringExtra("sender_id")
+            val receiverId = intent.getStringExtra("receiver_id")
+            val receiverName = intent.getStringExtra("receiver_name")
+            val roomId = intent.getStringExtra("room_id")
+            val isCallInitiator = intent.getBooleanExtra("isCallInitiator", false)
+            val fromService = intent.getBooleanExtra("from_service", false)
+
+            when (callType) {
+                "voice" -> {
+                    val fragment = VoiceCall().apply {
+                        arguments = Bundle().apply {
+                            putString("senderId", senderId)
+                            putString("receiverId", receiverId)
+                            putString("receiverName", receiverName)
+                            putString("roomId", roomId)
+                            putBoolean("isCallInitiator", isCallInitiator)
+                            putBoolean("from_service", fromService)
+                        }
+                    }
+
+                    supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container_view, fragment)
+                        .commit()
+                }
+            }
+            return
+        }
     }
 
     private fun loadInterstitialAd() {

@@ -3,6 +3,7 @@ package com.example.chatapp.Auth.Message
 import android.content.Intent
 import android.graphics.drawable.Drawable
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -10,8 +11,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.MediaController
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.VideoView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DataSource
@@ -20,9 +23,6 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.target.Target
 import com.example.chatapp.R
 import com.google.firebase.auth.FirebaseAuth
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 class UserChatAdapter(
     private val usermessage: List<UserChatDataClass>,
@@ -37,6 +37,7 @@ class UserChatAdapter(
         val senderMessage: TextView = itemView.findViewById(R.id.sendermessage)
         val senderTime: TextView = itemView.findViewById(R.id.sendertime)
         val messageType: ImageView = itemView.findViewById(R.id.senderimage)
+        val videoView: VideoView = itemView.findViewById(R.id.sendervideo)
         val voiceMessageLayout: TextView = itemView.findViewById(R.id.voicemessage)
         val btnPlayPause: ImageView = itemView.findViewById(R.id.btnPlayPause)
         val progressBar: ProgressBar = itemView.findViewById(R.id.progressBar)
@@ -47,6 +48,7 @@ class UserChatAdapter(
         val receiverTime: TextView = itemView.findViewById(R.id.time)
 
         val receiverImageMessage: ImageView? = itemView.findViewById(R.id.rsenderimage)
+        val receiverVideoView: VideoView? = itemView.findViewById(R.id.rsendervideo)
         val receiverVoiceLayout: TextView? = itemView.findViewById(R.id.rvoicemessage)
         val receiverBtnPlayPause: ImageView? = itemView.findViewById(R.id.rbtnPlayPause)
         val receiverProgressBar: ProgressBar? = itemView.findViewById(R.id.reciverprogressBar)
@@ -87,6 +89,8 @@ class UserChatAdapter(
             val position = holder.adapterPosition
             if (position != RecyclerView.NO_POSITION) {
                 cleanupMediaPlayer(position)
+                holder.videoView.stopPlayback()
+                holder.receiverVideoView?.stopPlayback()
             }
         }
     }
@@ -94,6 +98,7 @@ class UserChatAdapter(
     private fun resetVisibility(viewHolder: UserChatViewHolder) {
         viewHolder.senderMessage.visibility = View.GONE
         viewHolder.messageType.visibility = View.GONE
+        viewHolder.videoView.visibility = View.GONE
         viewHolder.voiceMessageLayout.visibility = View.GONE
         viewHolder.receiverMessage.visibility = View.GONE
         viewHolder.receiverName.visibility = View.GONE
@@ -101,6 +106,7 @@ class UserChatAdapter(
         viewHolder.receiverTime.visibility = View.GONE
         viewHolder.senderTime.visibility = View.GONE
         viewHolder.receiverImageMessage?.visibility = View.GONE
+        viewHolder.receiverVideoView?.visibility = View.GONE
         viewHolder.receiverVoiceLayout?.visibility = View.GONE
     }
 
@@ -155,11 +161,37 @@ class UserChatAdapter(
             openFullScreenImage(context, mediaUrl)
         }
     }
+
     private fun openFullScreenImage(context: android.content.Context, imageUrl: String) {
         val intent = Intent(context, FullScreenActivity::class.java).apply {
             putExtra(FullScreenActivity.EXTRA_IMAGE_URL, imageUrl)
         }
         context.startActivity(intent)
+    }
+
+    private fun setupVideoView(videoView: VideoView, videoUrl: String) {
+        try {
+            val mediaController = MediaController(videoView.context)
+            mediaController.setAnchorView(videoView)
+
+            videoView.setMediaController(mediaController)
+            videoView.setVideoURI(Uri.parse(videoUrl))
+
+            videoView.setOnPreparedListener { mp ->
+                mp.setOnVideoSizeChangedListener { _, _, _ ->
+                    mediaController.setAnchorView(videoView)
+                }
+            }
+
+            videoView.setOnErrorListener { _, what, extra ->
+                Log.e("UserChatAdapter", "VideoView error: what=$what, extra=$extra")
+                true
+            }
+
+            Log.d("UserChatAdapter", "Video URL set: $videoUrl")
+        } catch (e: Exception) {
+            Log.e("UserChatAdapter", "Error setting up video", e)
+        }
     }
 
     private fun showSenderMessage(viewHolder: UserChatViewHolder, data: UserChatDataClass, position: Int) {
@@ -180,12 +212,18 @@ class UserChatAdapter(
                         context = viewHolder.itemView.context,
                         imageView = viewHolder.messageType,
                         mediaUrl = data.mediaUrl!!,
-//                        placeholderRes = R.drawable.profile,
                         errorRes = R.drawable.profile
                     )
                 } else {
                     Log.e("UserChatAdapter", "Media URL is null or empty for sender image")
                     viewHolder.messageType.setImageResource(R.drawable.profile)
+                }
+            }
+
+            MessageType.VIDEO -> {
+                viewHolder.videoView.visibility = View.VISIBLE
+                if (!data.mediaUrl.isNullOrEmpty()) {
+                    setupVideoView(viewHolder.videoView, data.mediaUrl!!)
                 }
             }
 
@@ -206,7 +244,6 @@ class UserChatAdapter(
         viewHolder.receiverTime.text = data.time
         viewHolder.receiverName.text = data.recieverName
 
-        // Load receiver profile image
         Glide.with(viewHolder.itemView.context)
             .load(data.recieverImage)
             .circleCrop()
@@ -245,9 +282,20 @@ class UserChatAdapter(
                         imageView.setImageResource(R.drawable.profile)
                     }
                 } ?: run {
-                    // Fallback if receiverImageMessage is null
                     viewHolder.receiverMessage.visibility = View.VISIBLE
                     viewHolder.receiverMessage.text = "📷 Image"
+                }
+            }
+
+            MessageType.VIDEO -> {
+                viewHolder.receiverVideoView?.let { videoView ->
+                    videoView.visibility = View.VISIBLE
+                    if (!data.mediaUrl.isNullOrEmpty()) {
+                        setupVideoView(videoView, data.mediaUrl!!)
+                    }
+                } ?: run {
+                    viewHolder.receiverMessage.visibility = View.VISIBLE
+                    viewHolder.receiverMessage.text = "🎥 Video"
                 }
             }
 
@@ -268,6 +316,7 @@ class UserChatAdapter(
     private fun hideSenderMessage(viewHolder: UserChatViewHolder) {
         viewHolder.senderMessage.visibility = View.GONE
         viewHolder.messageType.visibility = View.GONE
+        viewHolder.videoView.visibility = View.GONE
         viewHolder.voiceMessageLayout.visibility = View.GONE
         viewHolder.senderTime.visibility = View.GONE
     }
@@ -278,6 +327,7 @@ class UserChatAdapter(
         viewHolder.receiverImage.visibility = View.GONE
         viewHolder.receiverTime.visibility = View.GONE
         viewHolder.receiverImageMessage?.visibility = View.GONE
+        viewHolder.receiverVideoView?.visibility = View.GONE
         viewHolder.receiverVoiceLayout?.visibility = View.GONE
         viewHolder.receiverBtnPlayPause?.visibility = View.GONE
         viewHolder.receiverProgressBar?.visibility = View.GONE
@@ -306,8 +356,6 @@ class UserChatAdapter(
                         if (player.isPlaying) {
                             progressBar.progress = player.currentPosition
                             handler.postDelayed(this, 100)
-                        } else {
-
                         }
                     } catch (e: Exception) {
                         Log.e("UserChatAdapter", "Error updating progress", e)
@@ -327,7 +375,6 @@ class UserChatAdapter(
                 if (mediaPlayers[position] == null) {
                     val mediaPlayer = MediaPlayer().apply {
                         try {
-                            // Direct use of Cloudinary URL
                             val audioUrl = data.mediaUrl!!
                             Log.d("UserChatAdapter", "Using audio URL: $audioUrl")
 

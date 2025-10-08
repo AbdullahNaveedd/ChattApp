@@ -7,6 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.ActivityCompat
 import com.example.chatapp.CallNotification.NotificationTokenManager
 import com.example.chatapp.R
@@ -24,6 +25,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_main)
@@ -34,21 +38,31 @@ class MainActivity : AppCompatActivity() {
             100
         )
 
-        if (intent != null) {
-            handleNotificationIntent(intent)
-        } else {
-            handleNormalStartup()
-        }
-
         NotificationTokenManager.initialize(this)
 
-        if (intent != null && (intent.hasExtra("action") || intent.hasExtra("call_type"))) {
-            handleNotificationIntent(intent)
+        // Handle different intent types
+        if (intent != null) {
+            when {
+                // Handle service-related intents (returning to ongoing call)
+                intent.getBooleanExtra("openVoiceCall", false) -> {
+                    handleServiceCallIntent(intent)
+                }
+                intent.action == VoiceCallService.ACTION_OPEN_CALL -> {
+                    handleServiceCallIntent(intent)
+                }
+                // Handle notification intents (new incoming calls)
+                intent.hasExtra("action") || intent.hasExtra("call_type") -> {
+                    handleNotificationIntent(intent)
+                }
+                else -> {
+                    handleNormalStartup()
+                }
+            }
         } else {
             handleNormalStartup()
         }
-
     }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -68,7 +82,47 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleNotificationIntent(intent)
+
+        when {
+            intent.getBooleanExtra("openVoiceCall", false) -> {
+                handleServiceCallIntent(intent)
+            }
+            intent.action == VoiceCallService.ACTION_OPEN_CALL -> {
+                handleServiceCallIntent(intent)
+            }
+            else -> {
+                handleNotificationIntent(intent)
+            }
+        }
+    }
+
+    private fun handleServiceCallIntent(intent: Intent) {
+        Log.d("MainActivity", "Handling service call intent - returning to ongoing call")
+
+        val roomId = intent.getStringExtra("roomId")
+        val senderId = intent.getStringExtra("senderId")
+        val receiverId = intent.getStringExtra("receiverId")
+        val receiverName = intent.getStringExtra("receiverName")
+        val isCallInitiator = intent.getBooleanExtra("isCallInitiator", false)
+
+        if (roomId != null && senderId != null && receiverId != null) {
+            val callIntent = Intent(this, Fragement_Activity::class.java).apply {
+                putExtra("show_call_fragment", true)
+                putExtra("call_fragment_type", "voice") // Since it's from voice call service
+                putExtra("sender_id", senderId)
+                putExtra("receiver_id", receiverId)
+                putExtra("receiver_name", receiverName)
+                putExtra("room_id", roomId)
+                putExtra("isCallInitiator", isCallInitiator)
+                putExtra("from_service", true) // Flag to indicate this is from service
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            startActivity(callIntent)
+            finish()
+        } else {
+            Log.e("MainActivity", "Missing required data to open call from service")
+            handleNormalStartup()
+        }
     }
 
     private fun handleNormalStartup() {
@@ -101,7 +155,6 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                 }
-
             }
         }
     }
@@ -178,11 +231,11 @@ class MainActivity : AppCompatActivity() {
 
         val callIntent = Intent(this, Fragement_Activity::class.java).apply {
             putExtra("show_call_fragment", true)
-            putExtra("call_fragment_type", callType) // Make sure this matches the type from notification
-            putExtra("sender_id", senderId) // Original caller
-            putExtra("receiver_id", receiverId) // Current user (call receiver)
+            putExtra("call_fragment_type", callType)
+            putExtra("sender_id", senderId)
+            putExtra("receiver_id", receiverId)
             putExtra("room_id", roomId)
-            putExtra("isCallInitiator", false) // Current user is receiving the call
+            putExtra("isCallInitiator", false)
         }
         startActivity(callIntent)
         finish()
